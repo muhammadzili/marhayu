@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segera Hadir - Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden;
+        }
+        .timer-box {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            min-width: 90px;
+        }
+        .timer-number {
+            font-weight: 900;
+            color: #111827;
+        }
+        .timer-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .content-enter-animation {
+            animation: fadeInScaleUp 0.8s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInScaleUp {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-50 text-center">
+
+    <main class="p-8 content-enter-animation">
+        <img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-16 mx-auto mb-8">
+        
+        <h1 class="text-4xl md:text-5xl font-black text-gray-900 tracking-tight">Kami Sedang Mempersiapkan Sesuatu</h1>
+        <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+            Platform Marhayu sedang dalam tahap akhir pengembangan. Kami bekerja keras untuk memberikan pengalaman terbaik untuk Anda. Tandai kalender Anda!
+        </p>
+
+        <div id="countdown-container" class="mt-12 flex justify-center items-center gap-4 md:gap-8">
+            <div class="timer-box">
+                <p id="days" class="timer-number text-5xl">00</p>
+                <p class="timer-label">Hari</p>
+            </div>
+            <div class="timer-box">
+                <p id="hours" class="timer-number text-5xl">00</p>
+                <p class="timer-label">Jam</p>
+            </div>
+            <div class="timer-box">
+                <p id="minutes" class="timer-number text-5xl">00</p>
+                <p class="timer-label">Menit</p>
+            </div>
+            <div class="timer-box">
+                <p id="seconds" class="timer-number text-5xl">00</p>
+                <p class="timer-label">Detik</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const countDownDate = new Date("Oct 20, 2025 00:00:00").getTime();
+
+        const countdownInterval = setInterval(function() {
+            const now = new Date().getTime();
+            const distance = countDownDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const formatTime = (time) => time < 10 ? `0${time}` : time;
+
+            document.getElementById("days").innerHTML = formatTime(days);
+            document.getElementById("hours").innerHTML = formatTime(hours);
+            document.getElementById("minutes").innerHTML = formatTime(minutes);
+            document.getElementById("seconds").innerHTML = formatTime(seconds);
+
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                document.getElementById("countdown-container").innerHTML = '<p class="text-2xl font-bold text-green-600">Selamat Datang di Marhayu!</p>';
+            }
+        }, 1000);
+    </script>
+
+</body>
+</html>
+
