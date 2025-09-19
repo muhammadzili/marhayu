@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencarian - Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { 
+            overflow: hidden; 
+            height: 100%;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-nav::-webkit-scrollbar, #search-results::-webkit-scrollbar { display: none; }
+        .sidebar-nav, #search-results { -ms-overflow-style: none; scrollbar-width: none; }
+         .notification-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 9999px;
+            background-color: #ef4444;
+            border: 2px solid white;
+        }
+        .skeleton {
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            50% { opacity: .5; }
+        }
+        .result-enter-animation {
+            animation: fadeInSlideUp 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .interactive-btn {
+            transition: transform 0.1s ease-out, background-color 0.2s ease;
+        }
+        .interactive-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="bg-white text-black">
+
+    <div class="container mx-auto max-w-4xl flex flex-row md:gap-8 h-full">
+        <!-- Sidebar -->
+        <aside class="hidden md:block w-[280px] flex-shrink-0 pt-8 pr-4">
+             <a href="index.html"><img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-10 mb-8"></a>
+            <nav class="space-y-1 text-lg sidebar-nav">
+                <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="bi bi-house-door text-2xl"></i><span>Beranda</span>
+                </a>
+                <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors font-bold text-black">
+                    <i class="bi bi-search-heart-fill text-2xl"></i><span>Pencarian</span>
+                </a>
+                 <a href="notifications.html" class="relative flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="bi bi-bell text-2xl"></i><span>Notifikasi</span>
+                    <span id="notification-badge-sidebar" class="hidden notification-badge"></span>
+                </a>
+                <a href="#" id="profile-link-sidebar" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="bi bi-person text-2xl"></i><span>Profil</span>
+                </a>
+            </nav>
+            <button id="logout-button" class="mt-8 w-full bg-black text-white py-2 rounded-full font-semibold hover:bg-gray-800 transition-colors interactive-btn">Keluar</button>
+        </aside>
+
+        <!-- Main Search Content -->
+        <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 h-full flex flex-col">
+            <header class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 border-b border-black/10 flex-shrink-0">
+                 <h1 class="text-xl font-bold md:hidden"><img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-8 mx-auto"></h1>
+                 <h1 class="text-xl font-bold hidden md:block">Pencarian</h1>
+                <div class="relative mt-4 md:mt-0">
+                    <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="search-input" placeholder="Cari pengguna dengan nama atau @username" class="w-full bg-gray-100 rounded-full py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-black">
+                </div>
+            </header>
+
+            <!-- Search Results -->
+            <div id="search-results" class="flex-grow overflow-y-auto">
+                <p class="p-4 text-center text-gray-500">Cari teman atau pengguna lain di Marhayu.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Bottom Navigation Bar (Mobile) -->
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 w-full bg-white border-t border-black/10 z-20">
+        <div class="flex justify-around items-center h-16">
+            <a href="index.html" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+                <i class="bi bi-house-door text-2xl"></i>
+            </a>
+            <a href="search.html" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+                <i class="bi bi-search text-2xl"></i>
+            </a>
+            <a href="notifications.html" class="relative flex flex-col items-center justify-center text-gray-500 hover:text-black">
+                <i class="bi bi-bell text-2xl"></i>
+                <span id="notification-badge-bottom" class="hidden notification-badge"></span>
+            </a>
+            <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+                <i class="bi bi-person text-2xl"></i>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        const { createClient } = supabase;
+        const SUPABASE_URL = 'https://ibqyhadodgcneqqbbfyg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicXloYWRvZGdjbmVxcWJiZnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDQyNTUsImV4cCI6MjA3MzMyMDI1NX0.hrxUV6MPXH9Yiq-7-NOXw0s-p38sC5blpSY3iBc439w';
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        
+        const searchInput = document.getElementById('search-input');
+        const searchResultsContainer = document.getElementById('search-results');
+
+        function highlightActiveNav() {
+            const bottomNav = document.getElementById('bottom-nav');
+            if (!bottomNav) return;
+
+            const links = bottomNav.querySelectorAll('a');
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+
+            links.forEach(link => {
+                const linkPage = link.getAttribute('href').split('/').pop();
+                const icon = link.querySelector('i');
+
+                if (linkPage === currentPage || (currentPage === 'search.html' && linkPage === 'search.html')) {
+                    link.classList.remove('text-gray-500');
+                    link.classList.add('text-black');
+                    if (icon.classList.contains('bi-house-door')) icon.className = 'bi bi-house-door-fill text-2xl';
+                    else if (icon.classList.contains('bi-search')) icon.className = 'bi bi-search-heart-fill text-2xl';
+                    else if (icon.classList.contains('bi-bell')) icon.className = 'bi bi-bell-fill text-2xl';
+                    else if (icon.classList.contains('bi-person')) icon.className = 'bi bi-person-fill text-2xl';
+                }
+            });
+        }
+        
+        async function subscribeToNotifications() {
+            const updateBadge = async () => {
+                const { count } = await db.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
+                 const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
+                badges.forEach(badge => {
+                    if (!badge) return;
+                    if (count > 0) {
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                });
+            };
+            await updateBadge();
+            db.channel('public:notifications')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${currentUser.id}` }, updateBadge)
+              .subscribe();
+        }
+
+        async function initialize() {
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) {
+                window.location.href = 'auth.html';
+                return;
+            }
+            currentUser = session.user;
+            document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
+            document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
+            highlightActiveNav();
+            subscribeToNotifications();
+        }
+
+        function createSkeletonResult() {
+            const div = document.createElement('div');
+            div.className = 'flex items-center p-4 border-b border-black/10';
+            div.innerHTML = `
+                <div class="w-12 h-12 rounded-full skeleton mr-4"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="w-1/3 h-5 skeleton"></div>
+                    <div class="w-1/4 h-4 skeleton"></div>
+                </div>
+            `;
+            return div;
+        }
+
+        function renderSearchResults(profiles) {
+            searchResultsContainer.innerHTML = ''; // Clear skeletons
+            if (!profiles || profiles.length === 0) {
+                searchResultsContainer.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada pengguna yang ditemukan.</p>';
+                return;
+            }
+
+            profiles.forEach((profile, index) => {
+                const userInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+                const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
+
+                const profileElement = document.createElement('a');
+                profileElement.href = `profile.html?user_id=${profile.id}`;
+                profileElement.className = 'flex items-center p-4 border-b border-black/10 hover:bg-gray-50 transition-colors result-enter-animation';
+                profileElement.style.animationDelay = `${index * 70}ms`;
+                
+                profileElement.innerHTML = `
+                    <img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 mr-4">
+                    <div>
+                        <p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}</p>
+                        <p class="text-sm text-gray-500">@${profile.username}</p>
+                    </div>
+                `;
+                searchResultsContainer.appendChild(profileElement);
+            });
+        }
+
+        async function handleSearch() {
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
+                searchResultsContainer.innerHTML = '<p class="p-4 text-center text-gray-500">Ketik minimal 2 huruf untuk memulai pencarian.</p>';
+                return;
+            }
+            
+            searchResultsContainer.innerHTML = '';
+            for(let i=0; i<3; i++) {
+                searchResultsContainer.appendChild(createSkeletonResult());
+            }
+
+            const { data, error } = await db
+                .from('profiles')
+                .select('*')
+                .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+                .neq('id', currentUser.id) // Exclude self from search
+                .limit(20);
+
+            if (error) {
+                console.error('Error searching profiles:', error);
+                searchResultsContainer.innerHTML = '<p class="p-4 text-center text-red-500">Terjadi kesalahan saat mencari.</p>';
+                return;
+            }
+
+            renderSearchResults(data);
+        }
+
+        // Debounce search input to avoid too many requests
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(handleSearch, 300);
+        });
+        
+        document.getElementById('logout-button').addEventListener('click', async () => { await db.auth.signOut(); window.location.href = 'auth.html'; });
+        initialize();
+    </script>
+</body>
+</html>
