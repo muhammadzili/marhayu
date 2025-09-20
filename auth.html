@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selamat Datang di Marhayu</title>
-    <link rel="shortcut icon" href="assets/marhayu-logo-w.png" type="image/x-icon">
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
         <div class="flex flex-col items-center justify-center p-4 md:p-8">
             <div class="w-full max-w-md">
                 <div class="flex justify-center mb-8 md:hidden">
-                   <img src="assets/marhayu-logo-w.png" alt="Logo Marhayu" class="h-12">
+                   <img src="assets/marhayu-white.png" alt="Logo Marhayu" class="h-12">
                </div>
                 <h1 class="text-3xl font-bold text-left mb-6">Terjadi Hari Ini</h1>
                 <div class="border border-black/20 rounded-2xl p-8">
@@ -78,45 +78,47 @@
         </div>
     </div>
     <script>
-        const { createClient } = supabase;
-        let db; // Deklarasikan variabel db di scope luar
+        // Variabel global untuk menyimpan Supabase client
+        let db;
 
-        // Buat fungsi async untuk mengambil kunci dan inisialisasi Supabase
+        // Fungsi untuk mengambil kredensial dan menginisialisasi Supabase
         async function initializeSupabase() {
             try {
-                // Ambil kunci dari API route yang sudah kita buat
-                const response = await fetch('/api/db.js');
+                // Panggil "gerbang rahasia", BUKAN /api/db.js secara langsung
+                const response = await fetch('/api/internal/get-db-config');
+
                 if (!response.ok) {
                     throw new Error('Gagal mengambil konfigurasi Supabase dari server.');
                 }
                 const config = await response.json();
                 
-                // Inisialisasi Supabase client dengan kunci dari server
+                const { createClient } = supabase;
                 db = createClient(config.supabaseUrl, config.supabaseAnonKey);
 
-                // Setelah Supabase siap, jalankan kode utama aplikasi
+                // Setelah 'db' berhasil dibuat, jalankan logika utama aplikasi
                 runAppLogic();
 
             } catch (error) {
                 console.error('Error inisialisasi Supabase:', error);
+                // Tampilkan pesan error ke pengguna jika perlu
                 const messageDiv = document.getElementById('message');
-                if (messageDiv) {
-                    messageDiv.textContent = 'Gagal terhubung ke layanan. Coba beberapa saat lagi.';
+                if(messageDiv) {
+                    messageDiv.textContent = 'Gagal terhubung ke server. Coba lagi nanti.';
                 }
             }
         }
-        
-        // Pindahkan semua logika yang butuh 'db' ke dalam fungsi ini
+
+        // Semua logika yang bergantung pada 'db' dimasukkan ke sini
         function runAppLogic() {
             const showLoginBtn = document.getElementById('show-login'), showSignupBtn = document.getElementById('show-signup');
             const loginSection = document.getElementById('login-section'), signupSection = document.getElementById('signup-section');
             const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
             const messageDiv = document.getElementById('message');
 
+            // Cek apakah sudah ada sesi, jika ya, redirect ke halaman utama
             (async () => { 
-                if (!db) return; // Pastikan db sudah diinisialisasi
                 const { data: { session } } = await db.auth.getSession(); 
-                if (session) window.location.href = 'index.html'; 
+                if (session) window.location.href = '/'; // Menggunakan clean URL
             })();
             
             function switchTab(tab) {
@@ -155,7 +157,7 @@
                 if (error) return showMessage('Gagal mendaftar: ' + error.message);
                 if (data.user) {
                     showMessage('Pendaftaran berhasil! Mengalihkan...', false);
-                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    setTimeout(() => window.location.href = '/', 1500); // Menggunakan clean URL
                 }
             });
 
@@ -165,11 +167,11 @@
                 if (!email || !password) return showMessage('Email dan kata sandi harus diisi.');
                 const { error } = await db.auth.signInWithPassword({ email, password });
                 if (error) showMessage('Gagal masuk: ' + error.message);
-                else window.location.href = 'index.html';
+                else window.location.href = '/'; // Menggunakan clean URL
             });
         }
-        
-        // Panggil fungsi inisialisasi saat halaman dimuat
+
+        // Mulai proses inisialisasi saat halaman dimuat
         initializeSupabase();
     </script>
 </body>
