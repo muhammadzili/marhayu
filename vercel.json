@@ -1,8 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/s/config",
-      "destination": "/api/db.js"
+      "source": "/auth",
+      "destination": "/auth.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "config",
+          "value": "true"
+        }
+      ]
     }
   ],
   "redirects": [
@@ -12,7 +19,7 @@
       "permanent": false
     }
   ],
-  "trailingSlash": false,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "trailingSlash": false
 }
 
