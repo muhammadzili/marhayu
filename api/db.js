@@ -1,5 +1,5 @@
 // api/db.js
-// Versi ini diperbarui dengan keamanan yang lebih fleksibel untuk development.
+// Versi ini diperbarui dengan metode deteksi yang lebih andal.
 
 export default function handler(request, response) {
   // --- Pemeriksaan Keamanan ---
@@ -9,14 +9,13 @@ export default function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // 2. Blokir akses langsung dari browser (ketika URL diketik di address bar).
-  // Permintaan dari skrip (seperti fetch) akan memiliki nilai selain 'none'.
-  // Ini adalah perbaikan utama untuk mengatasi error 403 di lingkungan lokal.
-  const secFetchSite = request.headers['sec-fetch-site'];
-  if (secFetchSite === 'none') {
-     return response.status(403).json({ error: 'Forbidden: Direct access is not allowed.' });
+  // 2. Blokir permintaan yang bertujuan untuk merender sebagai halaman (akses langsung).
+  // Header 'sec-fetch-dest' akan bernilai 'document' jika URL diakses langsung di address bar.
+  // Permintaan fetch dari JavaScript akan memiliki nilai 'empty'. Ini lebih andal.
+  if (request.headers['sec-fetch-dest'] === 'document') {
+    return response.status(403).json({ error: 'Forbidden: Direct access is not allowed.' });
   }
-  
+
   // 3. (Lapisan Tambahan) Verifikasi 'Referer' di lingkungan produksi.
   // Memastikan permintaan datang dari domain aplikasi Anda yang sebenarnya.
   const referer = request.headers['referer'];
@@ -24,7 +23,7 @@ export default function handler(request, response) {
 
   // Pemeriksaan ini hanya berjalan di lingkungan produksi Vercel untuk keamanan maksimal.
   if (process.env.NODE_ENV === 'production' && (!referer || new URL(referer).host !== host)) {
-       return response.status(403).json({ error: 'Forbidden: Invalid origin.' });
+    return response.status(403).json({ error: 'Forbidden: Invalid origin.' });
   }
 
   // --- Logika Utama (jika semua pemeriksaan keamanan lolos) ---
