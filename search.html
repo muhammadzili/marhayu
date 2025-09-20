@@ -22,12 +22,10 @@
         .notification-badge { position: absolute; top: 0.5rem; right: 0.5rem; width: 0.75rem; height: 0.75rem; border-radius: 9999px; background-color: #ef4444; border: 2px solid white; }
         .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 50% { opacity: .5; } }
-        .result-enter-animation { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+        .result-enter-animation, .post-enter-animation { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
         @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .interactive-btn { transition: transform 0.1s ease-out, background-color 0.2s ease; }
         .interactive-btn:active { transform: scale(0.95); }
-
-        /* Styles copied from index/profile for post consistency */
         .custom-video-player { position: relative; background-color: #000; border-radius: 1rem; overflow: hidden; line-height: 0; }
         .custom-video-player video { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 560px; border-radius: 1rem; }
         .video-controls-overlay { position: absolute; inset: 0; background-color: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; cursor: pointer; }
@@ -45,14 +43,24 @@
         .poll-progress { position: absolute; top: 0; left: 0; height: 100%; background-color: #c7d2fe; width: 0%; z-index: 1; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
         .poll-option-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; }
         .poll-option-percent { font-weight: 600; }
-        #comment-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
-        #comment-modal.is-visible { opacity: 1; visibility: visible; }
-        #comment-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
-        #comment-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
-        
+        #comment-modal, #confirm-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
+        #comment-modal.is-visible, #confirm-modal.is-visible { opacity: 1; visibility: visible; }
+        #comment-modal .modal-box, #confirm-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
+        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
         #tab-container { position: relative; }
         .tab-btn { position: relative; z-index: 10; }
         #tab-indicator { position: absolute; bottom: 0; height: 2px; background-color: black; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #global-reaction-popover { position: fixed; background-color: white; border-radius: 9999px; padding: 0.25rem 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 0.5rem; z-index: 100; opacity: 0; visibility: hidden; transform: scale(0.9) translateY(10px); transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0.2s; }
+        #global-reaction-popover.visible { opacity: 1; visibility: visible; transform: scale(1) translateY(0); transition-delay: 0s; }
+        .reaction-emoji { font-size: 1.5rem; cursor: pointer; transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .reaction-emoji:hover { transform: scale(1.4); }
+        #toast-notification { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); color: white; padding: 0.75rem 1.5rem; border-radius: 9999px; z-index: 1000; opacity: 0; visibility: hidden; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s; }
+        #toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
+        .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
+        .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
+        .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
+        .mention-item:hover { background-color: #f3f4f6; }
+
     </style>
 </head>
 <body class="bg-white text-black">
@@ -122,7 +130,6 @@
         </div>
     </nav>
     
-    <!-- Comment Modal (Copied from other pages for consistency) -->
     <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
         <div class="bg-white rounded-2xl w-full max-w-lg mx-4 border border-black/20 overflow-hidden flex flex-col max-h-[90vh] modal-box">
             <div class="flex justify-between items-center p-4 border-b border-black/10">
@@ -140,6 +147,21 @@
             </div>
         </div>
     </div>
+    
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-40 items-center justify-center hidden z-[60]">
+        <div class="bg-white rounded-2xl w-full max-w-sm mx-4 border border-black/10 overflow-hidden modal-box text-center p-6">
+            <div class="text-5xl text-red-500 mb-4"><i class="bi bi-exclamation-triangle"></i></div>
+            <h2 id="confirm-modal-title" class="font-bold text-lg mb-2">Konfirmasi Aksi</h2>
+            <p id="confirm-modal-message" class="text-gray-600 mb-6">Apakah Anda yakin ingin melanjutkan?</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-modal-cancel" class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 interactive-btn">Batal</button>
+                <button id="confirm-modal-confirm" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 interactive-btn">Hapus</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="global-reaction-popover"></div>
+    <div id="toast-notification"></div>
 
 
     <script>
@@ -147,22 +169,30 @@
         let db; 
         let currentUser = null;
         let activeSearchTab = 'all';
+        let activePostForComment = null, activeReplyTo = null;
+        let commentsById = new Map();
+        let confirmCallbackHolder = () => {};
+        let recentlyUpdatedPostLikes = new Set();
+        let recentlyUpdatedCommentLikes = new Set();
+        let reactionPopoverTimeout;
         
         const searchInput = document.getElementById('search-input');
         const searchResultsContainer = document.getElementById('search-results');
         const tabContainer = document.getElementById('tab-container');
+        const commentModal = document.getElementById('comment-modal'), closeModalButton = document.getElementById('close-modal-button'), modalContent = document.getElementById('modal-content'), commentInput = document.getElementById('comment-input'), submitCommentButton = document.getElementById('submit-comment'), replyingToBanner = document.getElementById('replying-to-banner');
+        const globalReactionPopover = document.getElementById('global-reaction-popover');
+        
+        const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
+        globalReactionPopover.innerHTML = availableReactions.map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`).join('');
 
         function highlightActiveNav() {
             const bottomNav = document.getElementById('bottom-nav');
             if (!bottomNav) return;
-
             const links = bottomNav.querySelectorAll('a');
             const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-
             links.forEach(link => {
                 const linkPage = link.getAttribute('href').split('/').pop();
                 const icon = link.querySelector('i');
-
                 if (linkPage === currentPage || (currentPage === 'search.html' && linkPage === 'search.html')) {
                     link.classList.remove('text-gray-500');
                     link.classList.add('text-black');
@@ -180,11 +210,8 @@
                  const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
                 badges.forEach(badge => {
                     if (!badge) return;
-                    if (count > 0) {
-                        badge.classList.remove('hidden');
-                    } else {
-                        badge.classList.add('hidden');
-                    }
+                    if (count > 0) badge.classList.remove('hidden');
+                    else badge.classList.add('hidden');
                 });
             };
             await updateBadge();
@@ -195,10 +222,7 @@
 
         async function initialize() {
             const { data: { session } } = await db.auth.getSession();
-            if (!session) {
-                window.location.href = 'auth.html';
-                return;
-            }
+            if (!session) { window.location.href = 'auth.html'; return; }
             currentUser = session.user;
             document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
             document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
@@ -206,11 +230,13 @@
             subscribeToNotifications();
             updateTabUI();
             window.addEventListener('resize', updateTabUI);
+            setupModalListeners();
+            subscribeToChanges();
         }
 
         function createSkeletonResult(type = 'user') {
             const div = document.createElement('div');
-            if(type === 'user') {
+            if(type === 'user' || type === 'all' || type === 'hashtags') {
                 div.className = 'flex items-center p-4 border-b border-black/10';
                 div.innerHTML = `
                     <div class="w-12 h-12 rounded-full skeleton mr-4"></div>
@@ -219,50 +245,36 @@
                         <div class="w-1/4 h-4 skeleton"></div>
                     </div>
                 `;
-            } else if (type === 'post') {
+            } else if (type === 'posts') {
                  div.className = 'p-4 border-b border-gray-200 flex space-x-4';
                  div.innerHTML = `<div class="w-12 h-12 rounded-full skeleton flex-shrink-0"></div><div class="w-full space-y-3"><div class="flex justify-between items-center"><div class="w-1/2 h-5 skeleton"></div></div><div class="w-full h-4 skeleton"></div><div class="w-3/4 h-4 skeleton"></div><div class="w-full h-48 skeleton mt-2 !rounded-xl"></div></div>`;
-            } else { // hashtag
-                 div.className = 'flex items-center p-4 border-b border-black/10';
-                 div.innerHTML = `<div class="w-8 h-8 rounded-full skeleton mr-4"></div><div class="w-1/3 h-5 skeleton"></div>`;
             }
             return div;
         }
 
-        // --- All rendering functions ---
-
         function renderUserResults(profiles, container) {
             if (!profiles || profiles.length === 0) {
-                container.innerHTML += '<p class="p-4 text-center text-gray-500">Tidak ada pengguna yang cocok.</p>';
+                if(activeSearchTab === 'users') container.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada pengguna yang cocok.</p>';
                 return;
             }
             profiles.forEach((profile, index) => {
                 const userInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
                 const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
-
                 const profileElement = document.createElement('a');
                 profileElement.href = `profile.html?user_id=${profile.id}`;
                 profileElement.className = 'flex items-center p-4 border-b border-black/10 hover:bg-gray-50 transition-colors result-enter-animation';
                 profileElement.style.animationDelay = `${index * 70}ms`;
-                
-                profileElement.innerHTML = `
-                    <img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 mr-4">
-                    <div>
-                        <p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}</p>
-                        <p class="text-sm text-gray-500">@${profile.username}</p>
-                    </div>
-                `;
+                profileElement.innerHTML = `<img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 mr-4"><div class="flex-1"><p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}</p><p class="text-sm text-gray-500">@${profile.username}</p></div>`;
                 container.appendChild(profileElement);
             });
         }
         
         function renderPostResults(posts, container) {
             if (!posts || posts.length === 0) {
-                 container.innerHTML += '<p class="p-4 text-center text-gray-500">Tidak ada postingan yang cocok.</p>';
+                 if(activeSearchTab === 'posts') container.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada postingan yang cocok.</p>';
                 return;
             }
             posts.forEach((post, index) => {
-                // IMPORTANT: createPostElement function needs to be available here
                 const postElement = createPostElement(post); 
                 postElement.style.animationDelay = `${index * 100}ms`;
                 container.appendChild(postElement);
@@ -271,7 +283,7 @@
         
         function renderHashtagResults(hashtags, container) {
              if (!hashtags || hashtags.length === 0) {
-                container.innerHTML += '<p class="p-4 text-center text-gray-500">Tidak ada hashtag yang cocok.</p>';
+                if(activeSearchTab === 'hashtags') container.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada hashtag yang cocok.</p>';
                 return;
             }
             hashtags.forEach((tag, index) => {
@@ -279,20 +291,10 @@
                 tagElement.href = `index.html?hashtag=${tag.hashtag}`;
                 tagElement.className = 'flex items-center p-4 border-b border-black/10 hover:bg-gray-50 transition-colors result-enter-animation';
                 tagElement.style.animationDelay = `${index * 70}ms`;
-                tagElement.innerHTML = `
-                    <div class="w-12 h-12 rounded-full bg-gray-100 mr-4 flex items-center justify-center">
-                        <i class="bi bi-hash text-2xl text-gray-500"></i>
-                    </div>
-                    <div>
-                        <p class="font-bold">#${tag.hashtag}</p>
-                        <p class="text-sm text-gray-500">${tag.post_count} postingan</p>
-                    </div>
-                `;
+                tagElement.innerHTML = `<div class="w-12 h-12 rounded-full bg-gray-100 mr-4 flex items-center justify-center"><i class="bi bi-hash text-2xl text-gray-500"></i></div><div><p class="font-bold">#${tag.hashtag}</p><p class="text-sm text-gray-500">${tag.post_count} postingan</p></div>`;
                 container.appendChild(tagElement);
             });
         }
-
-        // --- All search functions ---
 
         async function searchUsers(query) {
              const { data, error } = await db.from('profiles').select('*').or(`full_name.ilike.%${query}%,username.ilike.%${query}%`).neq('id', currentUser.id).limit(20);
@@ -301,9 +303,9 @@
         }
 
         async function searchPosts(query) {
-             const { data, error } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).ilike('content', `%${query}%`).order('created_at', { ascending: false }).limit(20);
+             const { data, error } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).textSearch('content', `'${query}'`).order('created_at', { ascending: false }).limit(20);
              if (error) { console.error('Error searching posts:', error); return []; }
-             return data;
+             return data.filter(post => !post.profiles.is_private);
         }
 
         async function searchHashtags(query) {
@@ -319,18 +321,18 @@
                 return;
             }
             
-            searchResultsContainer.innerHTML = ''; // Clear previous results
+            searchResultsContainer.innerHTML = '';
             for(let i=0; i<3; i++) { searchResultsContainer.appendChild(createSkeletonResult(activeSearchTab)); }
 
             if (activeSearchTab === 'all') {
                 const [users, posts, hashtags] = await Promise.all([searchUsers(query), searchPosts(query), searchHashtags(query.replace('#', ''))]);
                 searchResultsContainer.innerHTML = '';
                 if(users.length === 0 && posts.length === 0 && hashtags.length === 0) {
-                     searchResultsContainer.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada hasil ditemukan.</p>';
+                     searchResultsContainer.innerHTML = '<p class="p-4 text-center text-gray-500">Tidak ada hasil ditemukan untuk pencarian Anda.</p>';
                 } else {
+                    renderHashtagResults(hashtags, searchResultsContainer);
                     renderUserResults(users, searchResultsContainer);
                     renderPostResults(posts, searchResultsContainer);
-                    renderHashtagResults(hashtags, searchResultsContainer);
                 }
             } else if (activeSearchTab === 'users') {
                 const users = await searchUsers(query);
@@ -347,45 +349,24 @@
             }
         }
         
-        // --- Tab UI and Logic ---
-
         function updateTabUI() {
             const indicator = document.getElementById('tab-indicator');
             const activeBtn = tabContainer.querySelector(`[data-tab="${activeSearchTab}"]`);
             if (!indicator || !activeBtn) return;
-            
-            tabContainer.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.add('text-gray-500');
-                btn.classList.remove('text-black');
-            });
-            activeBtn.classList.add('text-black');
-            activeBtn.classList.remove('text-gray-500');
-            
-            indicator.style.left = `${activeBtn.offsetLeft}px`;
-            indicator.style.width = `${activeBtn.offsetWidth}px`;
+            tabContainer.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.add('text-gray-500'); btn.classList.remove('text-black'); });
+            activeBtn.classList.add('text-black'); activeBtn.classList.remove('text-gray-500');
+            indicator.style.left = `${activeBtn.offsetLeft}px`; indicator.style.width = `${activeBtn.offsetWidth}px`;
         }
 
         tabContainer.addEventListener('click', (e) => {
             const tabButton = e.target.closest('.tab-btn');
-            if (tabButton) {
-                activeSearchTab = tabButton.dataset.tab;
-                updateTabUI();
-                handleSearch(); // Re-run search for the new tab
-            }
+            if (tabButton) { activeSearchTab = tabButton.dataset.tab; updateTabUI(); handleSearch(); }
         });
 
-        // --- Debounce search input ---
         let searchTimeout;
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(handleSearch, 300);
-        });
+        searchInput.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(handleSearch, 300); });
         
-        // --- Logout and App Init ---
-        document.getElementById('logout-button').addEventListener('click', async () => { 
-            if(db) { await db.auth.signOut(); }
-            window.location.href = 'auth.html'; 
-        });
+        document.getElementById('logout-button').addEventListener('click', async () => { if(db) { await db.auth.signOut(); } window.location.href = 'auth.html'; });
 
         async function initializeApp() {
             try {
@@ -401,12 +382,14 @@
             }
         }
         
-        // ==========================================================================================
-        // == All functions for post rendering and interactivity (Copied from profile/index.html) ==
-        // ==========================================================================================
+        // --- Full Post & Comment Functionality ---
+        function showToast(message) { const toast = document.getElementById('toast-notification'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
+        function showConfirmModal(message, onConfirm, { title = 'Konfirmasi Aksi', confirmText = 'Hapus', cancelText = 'Batal' } = {}) { const confirmModal = document.getElementById('confirm-modal'); document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-message').textContent = message; document.getElementById('confirm-modal-confirm').textContent = confirmText; document.getElementById('confirm-modal-cancel').textContent = cancelText; confirmCallbackHolder = onConfirm; confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); setTimeout(() => confirmModal.classList.add('is-visible'), 10); }
+        function hideConfirmModal() { const confirmModal = document.getElementById('confirm-modal'); confirmModal.classList.remove('is-visible'); setTimeout(() => { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); }, 250); }
+        function setupModalListeners() { const confirmModal = document.getElementById('confirm-modal'); const confirmBtn = document.getElementById('confirm-modal-confirm'); const cancelBtn = document.getElementById('confirm-modal-cancel'); confirmBtn.addEventListener('click', () => { if (typeof confirmCallbackHolder === 'function') { confirmCallbackHolder(); } hideConfirmModal(); }); cancelBtn.addEventListener('click', hideConfirmModal); confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) { hideConfirmModal(); } }); }
         
         function createPostElement(post) { 
-             const div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'p-4 border-b border-gray-200 flex space-x-4 post-enter-animation';
             div.id = `post-${post.id}`;
             const profile = post.profiles;
@@ -432,12 +415,14 @@
                 postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>${mediaHtml}`;
             }
 
-            if (post.is_promotion && post.promotion_link) {
-                postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${post.promotion_button_text || 'Learn More'}</a></div>`;
-            }
-
             const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 font-semibold mt-1">Sponsored by ${profile.full_name}</p>` : '';
             
+            const reactions = post.reactions || [];
+            const reactionCounts = reactions.reduce((acc, reaction) => { acc[reaction.reaction_type] = (acc[reaction.reaction_type] || 0) + 1; return acc; }, {});
+            const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
+            const userReaction = reactions.find(r => r.user_id === currentUser.id);
+            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill ${userReaction?.reaction_type === type ? 'user-reacted' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+
             div.innerHTML = `
                 <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
                 <div class="w-full">
@@ -453,34 +438,35 @@
                     </div>
                     ${postContentHtml}
                     ${sponsoredLabel}
+                    <div class="reaction-summary">${reactionSummaryHtml}</div>
                     <div class="flex items-center justify-around text-gray-500 mt-3">
-                        <button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button>
-                        <button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button>
-                        <button data-post-id="${post.id}" class="copy-link-button hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button>
+                        <button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button>
+                        <button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button>
+                        <button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button>
+                        <div data-post-id="${post.id}" class="reactions-container relative"><button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button></div>
                     </div>
                 </div>`;
             return div;
         }
 
-        // Add event listeners for post interactions
-        searchResultsContainer.addEventListener('click', async e => {
-            const likeButton = e.target.closest('.like-button:not(.like-comment-button)');
-            if (likeButton) {
-                const postId = likeButton.dataset.postId;
-                // Simplified like logic for brevity. A full implementation would be here.
-                console.log(`Liking post ${postId}`);
-                db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId });
-            }
-
-            const commentButton = e.target.closest('.comment-button');
-            if (commentButton) {
-                // In a real app, you would need the full openCommentModal logic here
-                alert(`Opening comments for post ${commentButton.dataset.postId}`);
-            }
+        document.body.addEventListener('click', async e => {
+            const player = e.target.closest('.custom-video-player'); if (player) { const video = player.querySelector('video'); if (e.target.closest('.volume-btn')) { video.muted = !video.muted; e.target.closest('.volume-btn').querySelector('i').className = video.muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill'; return; } if (e.target.closest('.video-progress-bar')) { const rect = e.target.closest('.video-progress-bar').getBoundingClientRect(); video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration; return; } if (video.paused) video.play(); else video.pause(); }
+            const reactionEmoji = e.target.closest('.reaction-emoji'); if (reactionEmoji) { const postId = globalReactionPopover.dataset.postId; if (!postId) return; const reactionType = reactionEmoji.dataset.reaction; db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType }); globalReactionPopover.classList.remove('visible'); }
+            const likeButton = e.target.closest('.like-button:not(.like-comment-button)'); if (likeButton) { const postId = likeButton.dataset.postId; if(likeButton.disabled) return; likeButton.disabled = true; recentlyUpdatedPostLikes.add(postId); setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000); const wasLiked = likeButton.dataset.liked === 'true'; const likeCountSpan = likeButton.querySelector('.like-count'); const icon = likeButton.querySelector('i'); const currentCount = parseInt(likeCountSpan.textContent); likeButton.dataset.liked = !wasLiked; likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1; likeButton.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).then(({ error }) => { if (error) { likeButton.dataset.liked = wasLiked; likeCountSpan.textContent = currentCount; likeButton.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedPostLikes.delete(postId); } }).finally(() => { likeButton.disabled = false; }); }
+            const commentButton = e.target.closest('.comment-button'); if (commentButton) openCommentModal(commentButton.dataset.postId);
+            const deleteButton = e.target.closest('.delete-post-button'); if (deleteButton) { showConfirmModal('Postingan ini akan dihapus permanen.', () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (!error) document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); }); }
+            const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('search.html', 'index.html')}?post_id=${postId}`; try { await navigator.clipboard.writeText(postUrl); showToast('Tautan disalin ke clipboard!'); await db.rpc('repost_post', { post_id_to_repost: postId }); } catch(err) { showToast('Gagal menyalin tautan.'); } }
         });
+        document.body.addEventListener('mouseover', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { clearTimeout(reactionPopoverTimeout); const rect = reactionContainer.getBoundingClientRect(); globalReactionPopover.dataset.postId = reactionContainer.dataset.postId; const popoverWidth = globalReactionPopover.offsetWidth; let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2); if (leftPos < 8) leftPos = 8; if (leftPos + popoverWidth > window.innerWidth - 8) leftPos = window.innerWidth - popoverWidth - 8; globalReactionPopover.style.left = `${leftPos}px`; globalReactionPopover.style.top = `${rect.top - 45}px`; globalReactionPopover.classList.add('visible'); } });
+        document.body.addEventListener('mouseout', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { reactionPopoverTimeout = setTimeout(() => { if (!globalReactionPopover.matches(':hover')) globalReactionPopover.classList.remove('visible'); }, 200); } });
+        globalReactionPopover.addEventListener('mouseleave', () => { globalReactionPopover.classList.remove('visible'); });
+
+        // Dummy/simplified modal functions to prevent errors
+        async function openCommentModal(postId) { alert(`Fungsi Komentar Penuh untuk post ${postId} akan diimplementasikan.`); }
 
 
         initializeApp();
     </script>
 </body>
 </html>
+
