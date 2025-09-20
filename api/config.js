@@ -1,60 +1,45 @@
 // File: /api/config.js
-// Logika diperbarui untuk menangani beberapa domain yang diizinkan (produksi & preview).
+// Logika diperbarui untuk memblokir akses langsung dan hanya mengizinkan
+// permintaan yang berasal dari halaman web di domain yang sama.
 
 export default function handler(request, response) {
-  const referer = request.headers.referer;
-
-  // 1. Definisikan semua origin/domain yang diizinkan dalam sebuah daftar
-  const allowedOrigins = [
-    // Domain produksi utama (dari Vercel env var SITE_URL)
-    process.env.SITE_URL ? `https://${process.env.SITE_URL}` : null,
-    // URL deployment preview Vercel (dari Vercel env var VERCEL_URL)
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-  ].filter(Boolean); // Menghapus nilai yang kosong/null dari daftar
+  // 1. Gunakan header 'Sec-Fetch-Site' untuk keamanan yang lebih andal
+  // Header ini dikirim oleh browser modern untuk mengindikasikan asal permintaan.
+  // 'same-origin': Permintaan berasal dari halaman di situs Anda (misal: auth.html).
+  // 'none': Pengguna mengetik URL langsung di browser.
+  // 'cross-site': Permintaan dari situs lain.
+  const secFetchSite = request.headers['sec-fetch-site'];
 
   // (Untuk debugging di Vercel Log)
-  console.log("Request Referer:", referer);
-  console.log("Allowed Origins:", allowedOrigins);
+  console.log("Request Header 'Sec-Fetch-Site':", secFetchSite);
 
-  // Pastikan ada setidaknya satu origin yang diizinkan
-  if (allowedOrigins.length === 0) {
-      return response.status(500).json({ 
-        error: 'Environment variable SITE_URL atau VERCEL_URL tidak ditemukan.'
-      });
-  }
+  // 2. Logika Keamanan Utama:
+  // Hanya izinkan permintaan jika header-nya adalah 'same-origin'.
+  if (secFetchSite === 'same-origin') {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-  try {
-    // Ekstrak origin dari URL referer (e.g., "https://marhayu.vercel.app")
-    const refererOrigin = referer ? new URL(referer).origin : null;
-    
-    // 2. Logika Keamanan Utama:
-    // Cek apakah origin dari referer ada di dalam daftar yang kita izinkan.
-    if (refererOrigin && allowedOrigins.includes(refererOrigin)) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        return response.status(500).json({ 
-          error: 'Environment variables Supabase tidak diatur.' 
-        });
-      }
-
-      return response.status(200).json({
-        supabaseUrl,
-        supabaseAnonKey,
-      });
-    } else {
-      // Tolak akses jika origin tidak ada dalam daftar
-      return response.status(403).json({ 
-        error: 'Akses ditolak karena origin tidak diizinkan.',
-        details: `Origin yang diizinkan: ${allowedOrigins.join(', ')}. Origin yang diterima: ${refererOrigin || 'tidak ada'}.`
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return response.status(500).json({
+        error: 'Environment variables Supabase tidak diatur.'
       });
     }
-  } catch (error) {
-      console.error("Error saat mem-parsing URL referer:", error);
-      return response.status(400).json({
-          error: 'Header Referer tidak valid.'
-      });
+    
+    // Set header agar respons tidak di-cache oleh browser
+    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.setHeader('Pragma', 'no-cache');
+    response.setHeader('Expires', '0');
+
+    return response.status(200).json({
+      supabaseUrl,
+      supabaseAnonKey,
+    });
+  } else {
+    // Tolak semua jenis permintaan lain, termasuk akses langsung ('none')
+    return response.status(403).json({
+      error: 'Akses ditolak.',
+      details: `Permintaan ini tampaknya merupakan akses langsung atau dari sumber yang tidak diizinkan.`
+    });
   }
 }
 
