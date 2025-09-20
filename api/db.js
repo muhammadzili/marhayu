@@ -1,39 +1,45 @@
 // api/db.js
-// Versi ini diperbarui dengan metode "secret handshake" untuk keandalan maksimal.
+// Versi ini menambahkan penanganan CORS yang benar untuk menyelesaikan error 403.
 
 export default function handler(request, response) {
-  // --- Pemeriksaan Keamanan ---
+  // --- Penanganan CORS (Cross-Origin Resource Sharing) ---
+  
+  // Izinkan permintaan dari origin mana pun. Keamanan kita tidak bergantung pada ini,
+  // melainkan pada header kustom di bawah. Ini penting agar preflight request berhasil.
+  response.setHeader('Access-Control-Allow-Origin', '*'); 
+  response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
 
-  // 1. Hanya izinkan metode 'GET'.
+  // Jika ini adalah "preflight request" (metode OPTIONS), browser sedang memeriksa
+  // izin CORS. Kita harus meresponsnya dengan status 200 OK agar browser melanjutkan.
+  if (request.method === 'OPTIONS') {
+    return response.status(200).end();
+  }
+
+  // --- Pemeriksaan Keamanan untuk GET ---
+  
+  // Hanya izinkan metode GET setelah preflight berhasil.
   if (request.method !== 'GET') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
-
-  // 2. SOLUSI MUTAKHIR: Periksa header kustom ('X-Requested-With').
-  // Ini adalah "secret handshake". Hanya permintaan dari skrip fetch kita
-  // yang akan memiliki header ini. Akses langsung dari browser tidak akan memilikinya.
-  // Ini menyelesaikan masalah 403 saat development secara andal.
+  
+  // Pemeriksaan "secret handshake" tetap menjadi kunci keamanan utama kita
+  // untuk memblokir akses langsung dari URL di browser.
   if (request.headers['x-requested-with'] !== 'XMLHttpRequest') {
     return response.status(403).json({ error: 'Forbidden: Direct access is not allowed.' });
   }
-
-  // 3. (Lapisan Tambahan) Blokir rendering sebagai dokumen.
-  // Ini sebagai pengaman tambahan jika ada browser yang tidak mengirim header di atas.
-  if (request.headers['sec-fetch-dest'] === 'document') {
-    return response.status(403).json({ error: 'Forbidden' });
-  }
-
-  // --- Logika Utama (jika semua pemeriksaan keamanan lolos) ---
-
+  
+  // --- Logika Utama ---
+  
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
+  
   if (!supabaseUrl || !supabaseAnonKey) {
     return response.status(500).json({ 
       error: 'Server configuration error.' 
     });
   }
-
+  
   // Kirimkan kunci sebagai response JSON
   response.status(200).json({
     supabaseUrl,
