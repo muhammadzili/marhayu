@@ -515,16 +515,16 @@
                 return;
             }
             currentUser = session.user;
-            document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
-            document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
-            let { data: profile, error: profileError } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-             if (profileError || !profile) {
-                console.error("Gagal memuat atau membuat profil:", profileError);
-                timeline.innerHTML = `<div class="p-4 text-center text-red-500"><h2 class="font-bold text-lg">Kesalahan Kritis</h2><p>Tidak dapat memuat data profil. Ini mungkin karena masalah RLS atau API Key. Silakan periksa konsol untuk detail.</p></div>`;
-                return;
-            }
-            currentUserProfile = profile;
             
+            // --- URL CHANGE LOGIC ---
+            const { data: profileData } = await db.from('profiles').select('username').eq('id', currentUser.id).single();
+            if(profileData) {
+                currentUserProfile = profileData;
+                document.getElementById('profile-link-sidebar').href = `/@${currentUserProfile.username}`;
+                document.getElementById('profile-link-bottom').href = `/@${currentUserProfile.username}`;
+            }
+            // --- END URL CHANGE LOGIC ---
+
             const { data: followsData } = await db.from('follows').select('following_id').eq('follower_id', currentUser.id).eq('status', 'accepted');
             if (followsData) {
                 followingIds = followsData.map(f => f.following_id);
@@ -730,15 +730,14 @@
             const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
             
             const processedContent = post.content.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
-                if (mention) return `<a href="profile.html?user_id=${profile.id}" class="text-blue-500 hover:underline">@${mention}</a>`;
-                if (hashtag) return `<a href="?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
+                if (mention) return `<a href="/@${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
+                if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
             });
 
             let copiedLabelHtml = '';
             if (post.last_copied_at) {
                  const copiedDate = new Date(post.last_copied_at);
                  const createdDate = new Date(post.created_at);
-                 // BUG FIX: Show label for only 5 minutes to avoid it appearing "suddenly" long after the share.
                  if (Date.now() - copiedDate.getTime() < 5 * 60 * 1000 && Math.abs(copiedDate.getTime() - createdDate.getTime()) > 1000) {
                     copiedLabelHtml = `<div class="copied-post-label"><i class="bi bi-link-45deg"></i> Baru saja dibagikan</div>`;
                  }
@@ -789,11 +788,11 @@
             const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill ${userReaction?.reaction_type === type ? 'user-reacted' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             
             div.innerHTML = `
-                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
+                <div><a href="/@${profile.username}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
                 <div class="w-full">
                     <div class="flex justify-between items-start">
                         <div>
-                            <a href="profile.html?user_id=${profile.id}" class="hover:underline">
+                            <a href="/@${profile.username}" class="hover:underline">
                                 <p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
                                 <span class="ml-2 text-sm text-gray-500 font-normal">@${profile.username}</span></p>
                             </a>
@@ -878,8 +877,8 @@
             const isPostOwner = currentUser.id === postOwnerId;
             const isCommentOwner = currentUser.id === comment.user_id;
             let replyToMentionSpan = '';
-            if (comment.reply_to_username) replyToMentionSpan = `<a href="#" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
-            const processedContent = comment.content.replace(/@(\w+)/g, '<a href="#" class="text-blue-500 hover:underline">@$1</a>');
+            if (comment.reply_to_username) replyToMentionSpan = `<a href="/@${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
+            const processedContent = comment.content.replace(/@(\w+)/g, '<a href="/@$1" class="text-blue-500 hover:underline">@$1</a>');
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
             div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0">
@@ -887,7 +886,7 @@
                     <div class="bg-gray-100 rounded-xl p-3">
                         ${comment.is_pinned ? '<div class="text-xs text-gray-500 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}
                         <div class="flex justify-between items-center">
-                            <a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a>
+                            <a href="/@${profile.username}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a>
                             <div class="flex items-center text-gray-400">
                                 ${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}
                                 ${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}
