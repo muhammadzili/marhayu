@@ -1,15 +1,12 @@
 // api/db.js
-// Versi ini disederhanakan. Logika keamanan dipindahkan ke vercel.json.
+// Versi ini sangat sederhana karena semua keamanan
+// ditangani oleh vercel.json.
 
 export default function handler(request, response) {
-  // Satu-satunya pemeriksaan yang kita butuhkan di sini adalah metodenya.
+  // Hanya perlu memeriksa metodenya.
   if (request.method !== 'GET') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
-
-  // --- Logika Utama ---
-  // Vercel.json akan memblokir semua permintaan yang tidak sah
-  // sebelum mereka sampai ke titik ini.
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
