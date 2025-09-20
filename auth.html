@@ -28,7 +28,7 @@
                 <div class="flex justify-center mb-8 md:hidden">
                    <img src="assets/marhayu-logo-w.png" alt="Logo Marhayu" class="h-12">
                </div>
-                <hh1 class="text-3xl font-bold text-left mb-6">Terjadi Hari Ini</h1>
+                <h1 class="text-3xl font-bold text-left mb-6">Terjadi Hari Ini</h1>
                 <div class="border border-black/20 rounded-2xl p-8">
                     <div class="flex border-b border-black/20 mb-6">
                         <button id="show-login" class="flex-1 py-2 font-semibold border-b-2 border-black">Masuk</button>
@@ -78,8 +78,6 @@
         </div>
     </div>
     <script>
-        // --- BAGIAN YANG DIUBAH MULAI DI SINI ---
-
         const { createClient } = supabase;
         let db; // Deklarasikan variabel db di scope luar
 
@@ -115,7 +113,11 @@
             const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
             const messageDiv = document.getElementById('message');
 
-            (async () => { const { data: { session } } = await db.auth.getSession(); if (session) window.location.href = 'index.html'; })();
+            (async () => { 
+                if (!db) return; // Pastikan db sudah diinisialisasi
+                const { data: { session } } = await db.auth.getSession(); 
+                if (session) window.location.href = 'index.html'; 
+            })();
             
             function switchTab(tab) {
                 messageDiv.textContent = '';
@@ -169,8 +171,7 @@
         
         // Panggil fungsi inisialisasi saat halaman dimuat
         initializeSupabase();
-
-        // --- BAGIAN YANG DIUBAH SELESAI DI SINI ---
     </script>
 </body>
 </html>
+
