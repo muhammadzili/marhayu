@@ -169,6 +169,7 @@
         let db; 
         let currentUser = null;
         let activeSearchTab = 'all';
+        let followingIds = [];
         let activePostForComment = null, activeReplyTo = null;
         let commentsById = new Map();
         let confirmCallbackHolder = () => {};
@@ -224,6 +225,12 @@
             const { data: { session } } = await db.auth.getSession();
             if (!session) { window.location.href = 'auth.html'; return; }
             currentUser = session.user;
+
+            const { data: followsData } = await db.from('follows').select('following_id').eq('follower_id', currentUser.id).eq('status', 'accepted');
+            if (followsData) {
+                followingIds = followsData.map(f => f.following_id);
+            }
+
             document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
             document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
             highlightActiveNav();
@@ -238,13 +245,7 @@
             const div = document.createElement('div');
             if(type === 'user' || type === 'all' || type === 'hashtags') {
                 div.className = 'flex items-center p-4 border-b border-black/10';
-                div.innerHTML = `
-                    <div class="w-12 h-12 rounded-full skeleton mr-4"></div>
-                    <div class="flex-1 space-y-2">
-                        <div class="w-1/3 h-5 skeleton"></div>
-                        <div class="w-1/4 h-4 skeleton"></div>
-                    </div>
-                `;
+                div.innerHTML = `<div class="w-12 h-12 rounded-full skeleton mr-4"></div><div class="flex-1 space-y-2"><div class="w-1/3 h-5 skeleton"></div><div class="w-1/4 h-4 skeleton"></div></div>`;
             } else if (type === 'posts') {
                  div.className = 'p-4 border-b border-gray-200 flex space-x-4';
                  div.innerHTML = `<div class="w-12 h-12 rounded-full skeleton flex-shrink-0"></div><div class="w-full space-y-3"><div class="flex justify-between items-center"><div class="w-1/2 h-5 skeleton"></div></div><div class="w-full h-4 skeleton"></div><div class="w-3/4 h-4 skeleton"></div><div class="w-full h-48 skeleton mt-2 !rounded-xl"></div></div>`;
@@ -305,7 +306,14 @@
         async function searchPosts(query) {
              const { data, error } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).textSearch('content', `'${query}'`, { type: 'websearch', config: 'english' }).order('created_at', { ascending: false }).limit(20);
              if (error) { console.error('Error searching posts:', error); return []; }
-             return data.filter(post => !post.profiles.is_private || post.user_id === currentUser.id);
+             return data.filter(post => {
+                const author = post.profiles;
+                if (!author) return false;
+                if (author.id === currentUser.id) return true;
+                if (!author.is_private) return true;
+                if (author.is_private && followingIds.includes(author.id)) return true;
+                return false;
+             });
         }
 
         async function searchHashtags(query) {
@@ -504,6 +512,15 @@
             submitCommentButton.disabled = false;
         });
 
+        document.body.addEventListener('click', async e => {
+            const player = e.target.closest('.custom-video-player'); if (player) { const video = player.querySelector('video'); if (e.target.closest('.volume-btn')) { video.muted = !video.muted; e.target.closest('.volume-btn').querySelector('i').className = video.muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill'; return; } if (e.target.closest('.video-progress-bar')) { const rect = e.target.closest('.video-progress-bar').getBoundingClientRect(); video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration; return; } if (video.paused) video.play(); else video.pause(); }
+            const reactionEmoji = e.target.closest('.reaction-emoji'); if (reactionEmoji) { const postId = globalReactionPopover.dataset.postId; if (!postId) return; const reactionType = reactionEmoji.dataset.reaction; db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType }); globalReactionPopover.classList.remove('visible'); }
+            const likeButton = e.target.closest('.like-button:not(.like-comment-button)'); if (likeButton) { const postId = likeButton.dataset.postId; if(likeButton.disabled) return; likeButton.disabled = true; recentlyUpdatedPostLikes.add(postId); setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000); const wasLiked = likeButton.dataset.liked === 'true'; const likeCountSpan = likeButton.querySelector('.like-count'); const icon = likeButton.querySelector('i'); const currentCount = parseInt(likeCountSpan.textContent); likeButton.dataset.liked = !wasLiked; likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1; likeButton.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).then(({ error }) => { if (error) { likeButton.dataset.liked = wasLiked; likeCountSpan.textContent = currentCount; likeButton.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedPostLikes.delete(postId); } }).finally(() => { likeButton.disabled = false; }); }
+            const commentButton = e.target.closest('.comment-button'); if (commentButton) openCommentModal(commentButton.dataset.postId);
+            const deleteButton = e.target.closest('.delete-post-button'); if (deleteButton) { showConfirmModal('Postingan ini akan dihapus permanen.', () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (!error) document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); }); }
+            const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('search.html', 'index.html')}?post_id=${postId}`; try { await navigator.clipboard.writeText(postUrl); showToast('Tautan disalin ke clipboard!'); await db.rpc('repost_post', { post_id_to_repost: postId }); } catch(err) { showToast('Gagal menyalin tautan.'); } }
+        });
+
         modalContent.addEventListener('click', async (e) => {
             const replyBtn = e.target.closest('.reply-button'); if (replyBtn) { const repliedToCommentId = replyBtn.dataset.commentId; const repliedToUsername = replyBtn.dataset.username; const repliedToComment = commentsById.get(repliedToCommentId); let newParentId = repliedToCommentId; let current = repliedToComment; while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); } activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername }; replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`; replyingToBanner.classList.remove('hidden'); commentInput.focus(); document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); }; }
             const toggleBtn = e.target.closest('.toggle-replies-button'); if (toggleBtn) { const repliesContainer = toggleBtn.nextElementSibling; if (repliesContainer) { repliesContainer.classList.toggle('hidden'); const isHidden = repliesContainer.classList.contains('hidden'); const replyCount = toggleBtn.textContent.match(/\d+/)[0]; toggleBtn.textContent = isHidden ? `Lihat ${replyCount} balasan` : 'Sembunyikan balasan'; } }
@@ -511,6 +528,10 @@
             const pinCommentBtn = e.target.closest('.pin-comment-button'); if(pinCommentBtn) { const commentId = pinCommentBtn.dataset.commentId; const isPinned = !(pinCommentBtn.dataset.pinned === 'true'); await db.from('comments').update({ is_pinned: isPinned }).eq('id', commentId); await openCommentModal(activePostForComment.id); }
             const deleteCommentBtn = e.target.closest('.delete-comment-button'); if(deleteCommentBtn) { showConfirmModal('Komentar ini akan dihapus permanen.', async () => { await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId); await openCommentModal(activePostForComment.id); }); }
         });
+
+        document.body.addEventListener('mouseover', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { clearTimeout(reactionPopoverTimeout); const rect = reactionContainer.getBoundingClientRect(); globalReactionPopover.dataset.postId = reactionContainer.dataset.postId; const popoverWidth = globalReactionPopover.offsetWidth; let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2); if (leftPos < 8) leftPos = 8; if (leftPos + popoverWidth > window.innerWidth - 8) leftPos = window.innerWidth - popoverWidth - 8; globalReactionPopover.style.left = `${leftPos}px`; globalReactionPopover.style.top = `${rect.top - 45}px`; globalReactionPopover.classList.add('visible'); } });
+        document.body.addEventListener('mouseout', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { reactionPopoverTimeout = setTimeout(() => { if (!globalReactionPopover.matches(':hover')) globalReactionPopover.classList.remove('visible'); }, 200); } });
+        globalReactionPopover.addEventListener('mouseleave', () => { globalReactionPopover.classList.remove('visible'); });
         
         function subscribeToChanges() { db.channel('public-changes-search').on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, (payload) => handleLikeChange(payload.new?.post_id || payload.old?.post_id)).on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, (payload) => { const postId = payload.new?.post_id || payload.old?.post_id; updatePostReactionsUI(postId); if (activePostForComment?.id == postId) updatePostReactionsUI(postId, modalContent); }).on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => { if (payload.eventType === 'INSERT') handleCommentInsert(payload.new); else if (payload.eventType === 'UPDATE') handleCommentLikeChange(payload.new.id); }).subscribe(); }
         async function handleLikeChange(postId) { if (recentlyUpdatedPostLikes.has(postId)) return; const postElement = document.getElementById(`post-${postId}`); if (!postElement) return; const likeButton = postElement.querySelector('.like-button:not(.like-comment-button)'); if (!likeButton) return; const { data, error } = await db.from('posts').select(`likes(user_id)`).eq('id', postId).single(); if (error) return; const likeCountSpan = likeButton.querySelector('.like-count'); const icon = likeButton.querySelector('i'); const likes = data.likes || []; const userHasLiked = likes.some(like => like.user_id === currentUser.id); likeCountSpan.textContent = likes.length; likeButton.dataset.liked = userHasLiked; likeButton.classList.toggle('text-red-500', userHasLiked); icon.classList.toggle('bi-heart-fill', userHasLiked); icon.classList.toggle('bi-heart', !userHasLiked); }
