@@ -3,8 +3,8 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/@:username",
-      "destination": "/profile.html?username=:username"
+      "source": "/@(.*)",
+      "destination": "/profile.html?username=$1"
     }
   ]
 }
