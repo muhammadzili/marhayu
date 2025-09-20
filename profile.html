@@ -17,9 +17,11 @@
         body { font-family: 'Inter', sans-serif; }
         .font-lora { font-family: 'Lora', serif; }
         .font-playfair { font-family: 'Playfair Display', serif; }
-        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar { display: none; }
-        .modal-content, .sidebar-nav { -ms-overflow-style: none; scrollbar-width: none; }
+        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, #poll-options-container::-webkit-scrollbar { display: none; }
+        .modal-content, .sidebar-nav, #poll-options-container { -ms-overflow-style: none; scrollbar-width: none; }
         .icon-btn { transition: color 0.2s ease-in-out; }
+        .preview-container { position: relative; }
+        .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
         .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
         .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
         .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
@@ -32,7 +34,7 @@
         .video-controls-overlay .play-pause-btn { background: rgba(0,0,0,0.5); border: 2px solid white; color: white; width: 4rem; height: 4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
         .volume-btn { position: absolute; bottom: 0.75rem; right: 0.75rem; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; text-shadow: 0 0 5px black; z-index: 10; }
         .video-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.3); cursor: pointer; }
-        .video-progress-filled { width: 0%; height: 100%; background-color: #fff; transition: width 0.1s linear; }
+        .video-progress-filled { width: 0%; height: 100%; background-color: #fff; }
         
         #global-reaction-popover {
             position: fixed;
@@ -60,10 +62,10 @@
         .reaction-pill { display: flex; align-items: center; gap: 0.25rem; background-color: #eef2ff; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
         .user-reacted { background-color: #c7d2fe; border: 1px solid #818cf8; }
 
-        #comment-modal, #confirm-modal, #edit-profile-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
-        #comment-modal.is-visible, #confirm-modal.is-visible, #edit-profile-modal.is-visible { opacity: 1; visibility: visible; }
-        #comment-modal .modal-box, #confirm-modal .modal-box, #edit-profile-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
-        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #edit-profile-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
+        #comment-modal, #confirm-modal, #edit-profile-modal, #poll-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
+        #comment-modal.is-visible, #confirm-modal.is-visible, #edit-profile-modal.is-visible, #poll-modal.is-visible { opacity: 1; visibility: visible; }
+        #comment-modal .modal-box, #confirm-modal .modal-box, #edit-profile-modal .modal-box, #poll-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
+        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #edit-profile-modal.is-visible .modal-box, #poll-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
 
         .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 50% { opacity: .5; } }
@@ -388,11 +390,8 @@
             if (!session) { window.location.href = 'auth.html'; return; }
             currentUser = session.user;
 
-            const { data: profileData } = await db.from('profiles').select('username').eq('id', currentUser.id).single();
-            currentUserProfile = profileData;
-
-            document.getElementById('profile-link-sidebar').href = `/@${currentUserProfile.username}`;
-            document.getElementById('profile-link-bottom').href = `/@${currentUserProfile.username}`;
+            document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
+            document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
 
             const urlParams = new URLSearchParams(window.location.search);
             const usernameFromQuery = urlParams.get('username');
@@ -429,7 +428,7 @@
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             const mentionRegex = /@(\w+)/g;
             let processedText = text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline">$1</a>');
-            processedText = processedText.replace(mentionRegex, '<a href="/@$1" class="text-blue-500 hover:underline">@$1</a>');
+            processedText = processedText.replace(mentionRegex, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
             return processedText;
         }
 
@@ -555,30 +554,37 @@
             const sidebarLinks = document.querySelectorAll('aside nav a');
             sidebarLinks.forEach(link => {
                 link.classList.remove('font-bold', 'text-black');
-                link.querySelector('i').className = link.querySelector('i').className.replace('-fill', '');
+                const icon = link.querySelector('i');
+                if (icon.className.includes('-fill')) {
+                    icon.className = icon.className.replace('-fill', '');
+                }
             });
             
-            const activeSidebarLink = document.querySelector(`aside nav a[href*="/@${currentUserProfile.username}"]`);
-            if (activeSidebarLink && viewedUserId === currentUser.id) {
-                activeSidebarLink.classList.add('font-bold', 'text-black');
-                activeSidebarLink.querySelector('i').className = activeSidebarLink.querySelector('i').className.replace('person', 'person-fill');
+            if (viewedUserId === currentUser.id) {
+                const activeSidebarLink = document.getElementById('profile-link-sidebar');
+                if (activeSidebarLink) {
+                    activeSidebarLink.classList.add('font-bold', 'text-black');
+                    activeSidebarLink.querySelector('i').className = 'bi bi-person-fill text-2xl';
+                }
             }
 
             const bottomNav = document.getElementById('bottom-nav');
             if (!bottomNav) return;
             const links = bottomNav.querySelectorAll('a');
             links.forEach(link => {
-                const icon = link.querySelector('i');
-                link.classList.add('text-gray-500');
                 link.classList.remove('text-black');
-                icon.className = icon.className.replace('-fill', '');
+                link.classList.add('text-gray-500');
+                const icon = link.querySelector('i');
+                if(icon.className.includes('-fill')) icon.className = icon.className.replace('-fill', '');
             });
 
-            const activeBottomLink = document.querySelector(`#bottom-nav a[href*="/@${currentUserProfile.username}"]`);
-            if (activeBottomLink && viewedUserId === currentUser.id) {
-                activeBottomLink.classList.remove('text-gray-500');
-                activeBottomLink.classList.add('text-black');
-                activeBottomLink.querySelector('i').className = activeBottomLink.querySelector('i').className.replace('person', 'person-fill');
+            if (viewedUserId === currentUser.id) {
+                 const activeBottomLink = document.getElementById('profile-link-bottom');
+                if(activeBottomLink){
+                    activeBottomLink.classList.add('text-black');
+                    activeBottomLink.classList.remove('text-gray-500');
+                    activeBottomLink.querySelector('i').className = 'bi bi-person-fill text-2xl';
+                }
             }
         }
 
@@ -674,7 +680,7 @@
             const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
             
             const processedContent = post.content.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
-                if (mention) return `<a href="/@${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
+                if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
                 if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
             });
 
@@ -691,46 +697,89 @@
             if (post.is_poll) {
                 const pollVotes = post.poll_votes || [];
                 const userVote = pollVotes.find(v => v.user_id === currentUser.id);
-                const totalVotes = (post.poll_options || []).reduce((sum, opt) => sum + (opt.votes || 0), 0);
-                const optionsHtml = (post.poll_options || []).map(option => {
-                    const percent = totalVotes > 0 ? Math.round(((option.votes || 0) / totalVotes) * 100) : 0;
+                const totalVotes = post.poll_options.reduce((sum, opt) => sum + opt.votes, 0);
+                const optionsHtml = post.poll_options.map(option => {
+                    const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
                     const hasVotedThis = userVote && userVote.option_text === option.option;
-                    return `<div class="poll-option ${hasVotedThis ? 'user-voted' : ''}" data-option="${option.option}" data-post-id="${post.id}">${userVote ? `<div class="poll-progress" style="width: ${percent}%;"></div>` : ''}<div class="poll-option-content"><span>${option.option}</span>${userVote ? `<span class="poll-option-percent">${percent}%</span>` : ''}</div></div>`;
+                    const showResults = !!userVote;
+                    return `<div class="poll-option ${hasVotedThis ? 'user-voted' : ''}" data-option="${option.option}" data-post-id="${post.id}">
+                            ${showResults ? `<div class="poll-progress" style="width: ${percent}%;"></div>` : ''}
+                            <div class="poll-option-content">
+                                <span>${option.option}</span>
+                                ${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}
+                            </div>
+                        </div>`;
                 }).join('');
-                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p><div class="mt-3 space-y-2 poll-container" id="poll-${post.id}"><p class="font-bold text-lg">${post.poll_question}</p>${optionsHtml}<p class="text-xs text-gray-500 text-right">${totalVotes} suara</p></div>`;
+                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>
+                    <div class="mt-3 space-y-2 poll-container" id="poll-${post.id}">
+                        <p class="font-bold text-lg">${post.poll_question}</p>
+                        ${optionsHtml}
+                        <p class="text-xs text-gray-500 text-right">${totalVotes} suara</p>
+                    </div>`;
             } else if (post.is_full_text) {
                 postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
             } else {
                 let mediaHtml = '';
                 if (post.image_url) mediaHtml = `<img src="${post.image_url}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 w-full object-cover">`;
-                else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}"><video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video><div class="video-controls-overlay"><button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button><button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button></div><div class="video-progress-bar"><div class="video-progress-filled"></div></div></div>`;
+                else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}">
+                                    <video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
+                                    <div class="video-controls-overlay"> <button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button> <button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button> </div>
+                                    <div class="video-progress-bar"><div class="video-progress-filled"></div></div>
+                                </div>`;
                 postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>${mediaHtml}`;
             }
+
+            if (post.is_promotion && post.promotion_link) {
+                postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${post.promotion_button_text || 'Learn More'}</a></div>`;
+            }
+
             const reactions = post.reactions || [];
-            const reactionCounts = reactions.reduce((acc, r) => { acc[r.reaction_type] = (acc[r.reaction_type] || 0) + 1; return acc; }, {});
+            const reactionCounts = reactions.reduce((acc, reaction) => {
+                acc[reaction.reaction_type] = (acc[reaction.reaction_type] || 0) + 1;
+                return acc;
+            }, {});
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
             const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill ${userReaction?.reaction_type === type ? 'user-reacted' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             
+            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 font-semibold mt-1">Sponsored by ${profile.full_name}</p>` : '';
+            
             div.innerHTML = `
-                <div><a href="/@${profile.username}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
+                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
                 <div class="w-full">
                     <div class="flex justify-between items-start">
-                        <div><a href="/@${profile.username}" class="hover:underline"><p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}<span class="ml-2 text-sm text-gray-500 font-normal">@${profile.username}</span></p></a><p class="text-xs text-gray-500">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p></div>
+                        <div>
+                            <a href="profile.html?user_id=${profile.id}" class="hover:underline">
+                                <p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
+                                <span class="ml-2 text-sm text-gray-500 font-normal">@${profile.username}</span></p>
+                            </a>
+                            <p class="text-xs text-gray-500">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                        </div>
                         ${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 text-xl">&times;</button>` : ''}
                     </div>
                     ${copiedLabelHtml}
                     ${postContentHtml}
+                    ${sponsoredLabel}
                     <div class="reaction-summary">${reactionSummaryHtml}</div>
                     <div class="flex items-center justify-around text-gray-500 mt-3">
                         <button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button>
                         <button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button>
                         <button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button>
-                        <div data-post-id="${post.id}" class="reactions-container relative"><button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button></div>
+                        <div data-post-id="${post.id}" class="reactions-container relative">
+                            <button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button>
+                        </div>
                     </div>
                 </div>`;
+            
+            const video = div.querySelector('video');
+            if (video) {
+                const playPauseIcon = div.querySelector('.play-pause-btn i');
+                video.addEventListener('play', () => { if(playPauseIcon) playPauseIcon.className = 'bi bi-pause-fill text-3xl'; });
+                video.addEventListener('pause', () => { if(playPauseIcon) playPauseIcon.className = 'bi bi-play-fill text-3xl'; });
+            }
             return div;
         }
+
 
         async function updatePostReactionsUI(postId, elementContext = null) {
             const postElement = elementContext ? elementContext.querySelector(`[id='post-${postId}']`) : document.getElementById(`post-${postId}`);
@@ -796,11 +845,11 @@
             const isPostOwner = currentUser.id === postOwnerId;
             const isCommentOwner = currentUser.id === comment.user_id;
             let replyToMentionSpan = '';
-            if (comment.reply_to_username) replyToMentionSpan = `<a href="/@${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
-            const processedContent = comment.content.replace(/@(\w+)/g, '<a href="/@$1" class="text-blue-500 hover:underline">@$1</a>');
+            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
+            const processedContent = comment.content.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0"><div class="flex-1"><div class="bg-gray-100 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="/@${profile.username}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0"><div class="flex-1"><div class="bg-gray-100 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
             return div;
         }
 
@@ -980,4 +1029,3 @@
     </script>
 </body>
 </html>
-
