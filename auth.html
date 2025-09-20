@@ -28,7 +28,7 @@
                 <div class="flex justify-center mb-8 md:hidden">
                    <img src="assets/marhayu-logo-w.png" alt="Logo Marhayu" class="h-12">
                </div>
-                <h1 class="text-3xl font-bold text-left mb-6">Terjadi Hari Ini</h1>
+                <hh1 class="text-3xl font-bold text-left mb-6">Terjadi Hari Ini</h1>
                 <div class="border border-black/20 rounded-2xl p-8">
                     <div class="flex border-b border-black/20 mb-6">
                         <button id="show-login" class="flex-1 py-2 font-semibold border-b-2 border-black">Masuk</button>
@@ -78,66 +78,99 @@
         </div>
     </div>
     <script>
+        // --- BAGIAN YANG DIUBAH MULAI DI SINI ---
+
         const { createClient } = supabase;
-        const SUPABASE_URL = 'https://ibqyhadodgcneqqbbfyg.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicXloYWRvZGdjbmVxcWJiZnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDQyNTUsImV4cCI6MjA3MzMyMDI1NX0.hrxUV6MPXH9Yiq-7-NOXw0s-p38sC5blpSY3iBc439w';
-        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let db; // Deklarasikan variabel db di scope luar
 
-        const showLoginBtn = document.getElementById('show-login'), showSignupBtn = document.getElementById('show-signup');
-        const loginSection = document.getElementById('login-section'), signupSection = document.getElementById('signup-section');
-        const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
-        const messageDiv = document.getElementById('message');
+        // Buat fungsi async untuk mengambil kunci dan inisialisasi Supabase
+        async function initializeSupabase() {
+            try {
+                // Ambil kunci dari API route yang sudah kita buat
+                const response = await fetch('/api/db.js');
+                if (!response.ok) {
+                    throw new Error('Gagal mengambil konfigurasi Supabase dari server.');
+                }
+                const config = await response.json();
+                
+                // Inisialisasi Supabase client dengan kunci dari server
+                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
 
-        (async () => { const { data: { session } } = await db.auth.getSession(); if (session) window.location.href = 'index.html'; })();
+                // Setelah Supabase siap, jalankan kode utama aplikasi
+                runAppLogic();
+
+            } catch (error) {
+                console.error('Error inisialisasi Supabase:', error);
+                const messageDiv = document.getElementById('message');
+                if (messageDiv) {
+                    messageDiv.textContent = 'Gagal terhubung ke layanan. Coba beberapa saat lagi.';
+                }
+            }
+        }
         
-        function switchTab(tab) {
-             messageDiv.textContent = '';
-            if (tab === 'login') {
-                loginSection.classList.add('active'); signupSection.classList.remove('active');
-                showLoginBtn.classList.remove('text-gray-500', 'border-transparent'); showLoginBtn.classList.add('border-black');
-                showSignupBtn.classList.add('text-gray-500', 'border-transparent');
-            } else {
-                loginSection.classList.remove('active'); signupSection.classList.add('active');
-                showSignupBtn.classList.remove('text-gray-500', 'border-transparent'); showSignupBtn.classList.add('border-black');
-                showLoginBtn.classList.add('text-gray-500', 'border-transparent');
-            }
-        }
-        showLoginBtn.addEventListener('click', () => switchTab('login'));
-        showSignupBtn.addEventListener('click', () => switchTab('signup'));
+        // Pindahkan semua logika yang butuh 'db' ke dalam fungsi ini
+        function runAppLogic() {
+            const showLoginBtn = document.getElementById('show-login'), showSignupBtn = document.getElementById('show-signup');
+            const loginSection = document.getElementById('login-section'), signupSection = document.getElementById('signup-section');
+            const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
+            const messageDiv = document.getElementById('message');
 
-        function showMessage(msg, isError = true) {
-            messageDiv.textContent = msg;
-            messageDiv.className = isError ? 'text-red-500 text-sm mb-4 text-center min-h-[20px]' : 'text-green-500 text-sm mb-4 text-center min-h-[20px]';
-        }
-
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('signup-fullname').value;
-            const username = document.getElementById('signup-username').value;
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-
-            if (!email || !password || !fullName || !username) return showMessage('Semua kolom harus diisi.');
+            (async () => { const { data: { session } } = await db.auth.getSession(); if (session) window.location.href = 'index.html'; })();
             
-            const { data, error } = await db.auth.signUp({
-                email: email, password: password,
-                options: { data: { full_name: fullName, username: username.toLowerCase() } }
-            });
-            if (error) return showMessage('Gagal mendaftar: ' + error.message);
-            if (data.user) {
-                showMessage('Pendaftaran berhasil! Mengalihkan...', false);
-                setTimeout(() => window.location.href = 'index.html', 1500);
+            function switchTab(tab) {
+                messageDiv.textContent = '';
+                if (tab === 'login') {
+                    loginSection.classList.add('active'); signupSection.classList.remove('active');
+                    showLoginBtn.classList.remove('text-gray-500', 'border-transparent'); showLoginBtn.classList.add('border-black');
+                    showSignupBtn.classList.add('text-gray-500', 'border-transparent');
+                } else {
+                    loginSection.classList.remove('active'); signupSection.classList.add('active');
+                    showSignupBtn.classList.remove('text-gray-500', 'border-transparent'); showSignupBtn.classList.add('border-black');
+                    showLoginBtn.classList.add('text-gray-500', 'border-transparent');
+                }
             }
-        });
+            showLoginBtn.addEventListener('click', () => switchTab('login'));
+            showSignupBtn.addEventListener('click', () => switchTab('signup'));
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value, password = document.getElementById('login-password').value;
-            if (!email || !password) return showMessage('Email dan kata sandi harus diisi.');
-            const { error } = await db.auth.signInWithPassword({ email, password });
-            if (error) showMessage('Gagal masuk: ' + error.message);
-            else window.location.href = 'index.html';
-        });
+            function showMessage(msg, isError = true) {
+                messageDiv.textContent = msg;
+                messageDiv.className = isError ? 'text-red-500 text-sm mb-4 text-center min-h-[20px]' : 'text-green-500 text-sm mb-4 text-center min-h-[20px]';
+            }
+
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fullName = document.getElementById('signup-fullname').value;
+                const username = document.getElementById('signup-username').value;
+                const email = document.getElementById('signup-email').value;
+                const password = document.getElementById('signup-password').value;
+
+                if (!email || !password || !fullName || !username) return showMessage('Semua kolom harus diisi.');
+                
+                const { data, error } = await db.auth.signUp({
+                    email: email, password: password,
+                    options: { data: { full_name: fullName, username: username.toLowerCase() } }
+                });
+                if (error) return showMessage('Gagal mendaftar: ' + error.message);
+                if (data.user) {
+                    showMessage('Pendaftaran berhasil! Mengalihkan...', false);
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                }
+            });
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value, password = document.getElementById('login-password').value;
+                if (!email || !password) return showMessage('Email dan kata sandi harus diisi.');
+                const { error } = await db.auth.signInWithPassword({ email, password });
+                if (error) showMessage('Gagal masuk: ' + error.message);
+                else window.location.href = 'index.html';
+            });
+        }
+        
+        // Panggil fungsi inisialisasi saat halaman dimuat
+        initializeSupabase();
+
+        // --- BAGIAN YANG DIUBAH SELESAI DI SINI ---
     </script>
 </body>
 </html>
