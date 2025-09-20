@@ -120,9 +120,7 @@
 
     <script>
         const { createClient } = supabase;
-        const SUPABASE_URL = 'https://ibqyhadodgcneqqbbfyg.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicXloYWRvZGdjbmVxcWJiZnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDQyNTUsImV4cCI6MjA3MzMyMDI1NX0.hrxUV6MPXH9Yiq-7-NOXw0s-p38sC5blpSY3iBc439w';
-        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let db; // Defined but not initialized
 
         let currentUser = null;
         
@@ -258,8 +256,32 @@
             searchTimeout = setTimeout(handleSearch, 300);
         });
         
-        document.getElementById('logout-button').addEventListener('click', async () => { await db.auth.signOut(); window.location.href = 'auth.html'; });
-        initialize();
+        document.getElementById('logout-button').addEventListener('click', async () => { 
+            if(db) {
+                await db.auth.signOut(); 
+            }
+            window.location.href = 'auth.html'; 
+        });
+
+        async function initializeApp() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const config = await response.json();
+                if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
+
+                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+                
+                // Call the main initialization function after Supabase is ready
+                initialize();
+
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
+            }
+        }
+
+        initializeApp();
     </script>
 </body>
 </html>
