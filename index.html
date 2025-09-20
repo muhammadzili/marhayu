@@ -5,12 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beranda - Marhayu</title>
     <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
-    <!-- 
-        CATATAN OPTIMISASI: 
-        Untuk penggunaan production, skrip Tailwind CDN ini sebaiknya diganti dengan file CSS yang sudah dicompile. 
-        Proses 'build' akan menghapus semua class yang tidak terpakai, menghasilkan file yang jauh lebih kecil dan ringan.
-        Lihat dokumentasi Tailwind CSS untuk info lebih lanjut.
-    -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -43,7 +37,7 @@
         .video-progress-filled { width: 0%; height: 100%; background-color: #fff; }
         
         #global-reaction-popover {
-            position: fixed; /* Changed to fixed */
+            position: fixed;
             background-color: white;
             border-radius: 9999px;
             padding: 0.25rem 0.5rem;
@@ -81,7 +75,6 @@
         .post-enter-animation { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
         @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Poll Styles Updated --- */
         .poll-option {
             position: relative;
             border: 1px solid #d1d5db;
@@ -103,7 +96,6 @@
             background-color: #c7d2fe;
             width: 0%;
             z-index: 1;
-            /* Added transition for smooth animation */
             transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .poll-option-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; }
@@ -120,7 +112,6 @@
             margin-top: 0.5rem;
         }
         
-        /* Toast Notification */
         #toast-notification {
             position: fixed;
             bottom: 5rem;
@@ -300,21 +291,21 @@
         <!-- Emoji content will be populated by JS -->
     </div>
 
-
     <script>
         const { createClient } = supabase;
-        const SUPABASE_URL = 'https://ibqyhadodgcneqqbbfyg.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicXloYWRvZGdjbmVxcWJiZnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDQyNTUsImV4cCI6MjA3MzMyMDI1NX0.hrxUV6MPXH9Yiq-7-NOXw0s-p38sC5blpSY3iBc439w';
-        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Kunci Supabase akan diambil dari API, tidak di-hardcode di sini.
+        let db; 
 
+        // Variabel global lainnya
         let currentUser = null, currentUserProfile = null, postImageFile = null, postVideoFile = null, activePostForComment = null, isFullTextMode = false, fullTextColor = '', fullTextFont = '', activeReplyTo = null;
         let commentsById = new Map();
         let confirmCallbackHolder = () => {};
         let followingIds = [];
         let recentlyUpdatedPostLikes = new Set();
         let recentlyUpdatedCommentLikes = new Set();
-        let reactionPopoverTimeout; // To manage showing/hiding popover
+        let reactionPopoverTimeout;
         
+        // Konstanta elemen DOM
         const timeline = document.getElementById('timeline');
         const postContentInput = document.getElementById('post-content');
         const submitPostButton = document.getElementById('submit-post');
@@ -323,24 +314,17 @@
         const mediaPreviewContainer = document.getElementById('media-preview-container');
         const commentModal = document.getElementById('comment-modal'), closeModalButton = document.getElementById('close-modal-button'), modalContent = document.getElementById('modal-content'), commentInput = document.getElementById('comment-input'), submitCommentButton = document.getElementById('submit-comment'), replyingToBanner = document.getElementById('replying-to-banner');
         const fullTextStyleButton = document.getElementById('full-text-style-button'), fullTextModal = document.getElementById('full-text-modal'), closeFullTextModalButton = document.getElementById('close-full-text-modal'), colorSwatches = document.getElementById('color-swatches'), fontSwatches = document.getElementById('font-swatches');
-        
-        const pollButton = document.getElementById('poll-button');
-        const pollModal = document.getElementById('poll-modal');
-        const closePollModalButton = document.getElementById('close-poll-modal');
-        const pollQuestionInput = document.getElementById('poll-question');
-        const pollOptionsContainer = document.getElementById('poll-options-container');
-        const addPollOptionButton = document.getElementById('add-poll-option');
-        const submitPollPostButton = document.getElementById('submit-poll-post');
+        const pollButton = document.getElementById('poll-button'), pollModal = document.getElementById('poll-modal'), closePollModalButton = document.getElementById('close-poll-modal'), pollQuestionInput = document.getElementById('poll-question'), pollOptionsContainer = document.getElementById('poll-options-container'), addPollOptionButton = document.getElementById('add-poll-option'), submitPollPostButton = document.getElementById('submit-poll-post');
         const globalReactionPopover = document.getElementById('global-reaction-popover');
         
-        // --- START FIX: Populate the global reaction popover with emojis ---
+        // Inisialisasi popover reaksi
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions
             .map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`)
             .join('');
-        // --- END FIX ---
 
-
+        // Semua fungsi (createSkeletonPostElement, showConfirmModal, dll.) tetap sama
+        // ... (Kode fungsi dari file asli Anda diletakkan di sini) ...
         function createSkeletonPostElement() {
             const div = document.createElement('div');
             div.className = 'p-4 border-b border-gray-200 flex space-x-4';
@@ -358,7 +342,6 @@
             return div;
         }
 
-        // --- START FIX: Create a better skeleton loader for the comment modal ---
         function createCommentSkeletonLoader() {
             return `
                 <div class="p-4 animate-pulse">
@@ -388,7 +371,6 @@
                 </div>
             `;
         }
-        // --- END FIX ---
 
         function showConfirmModal(message, onConfirm, { title = 'Konfirmasi Hapus', confirmText = 'Hapus', cancelText = 'Batal' } = {}) {
             const confirmModal = document.getElementById('confirm-modal');
@@ -575,14 +557,12 @@
             if (filteredPosts.length === 0) {
                 timeline.innerHTML = `<p class="p-4 text-center text-gray-500">Tidak ada postingan untuk ditampilkan.</p>`;
             } else {
-                // --- START FIX: Render all posts at once to prevent glitches ---
                 const postElements = filteredPosts.map((post, index) => {
                     const postElement = createPostElement(post);
                     postElement.style.animationDelay = `${index * 100}ms`;
                     return postElement;
                 });
                 timeline.append(...postElements);
-                // --- END FIX ---
             }
             setupVideoAutoplay();
         }
@@ -606,33 +586,13 @@
               })
               .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, async (payload) => {
                     const postId = payload.new.id;
-                    console.log(`[Realtime] Received UPDATE for post [${postId}].`);
-
                     const postElement = document.getElementById(`post-${postId}`);
                     const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
-
                     if (payload.new.is_poll && (postElement || modalPostElement)) {
-                        console.log(`[Realtime] Post is a poll and is visible. Refetching full poll data...`);
-                        
-                        const { data: updatedPost, error } = await db
-                            .from('posts')
-                            .select('poll_options, poll_votes(user_id, option_text)')
-                            .eq('id', postId)
-                            .single();
-
-                        if (error) {
-                            console.error(`[Realtime] Failed to refetch post data for poll update:`, error);
-                            return;
-                        }
-
-                        console.log(`[Realtime] Refetch successful. Calling updatePollUI with fresh data:`, updatedPost);
-                        
-                        if (postElement) {
-                            updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes);
-                        }
-                        if (modalPostElement) {
-                            updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes, modalContent);
-                        }
+                        const { data: updatedPost, error } = await db.from('posts').select('poll_options, poll_votes(user_id, option_text)').eq('id', postId).single();
+                        if (error) { return; }
+                        if (postElement) { updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes); }
+                        if (modalPostElement) { updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes, modalContent); }
                     }
               })
               .subscribe();
@@ -866,10 +826,7 @@
         
         function updatePollUI(postId, pollOptions, pollVotes, elementContext = document) {
             const pollContainer = elementContext.querySelector(`#poll-${postId}`);
-            if (!pollContainer) {
-                console.log(`[updatePollUI] Could not find poll container for post ${postId} in context`, elementContext);
-                return;
-            }
+            if (!pollContainer) { return; }
 
             const userVote = (pollVotes || []).find(v => v.user_id === currentUser.id);
             const totalVotes = (pollOptions || []).reduce((sum, opt) => sum + opt.votes, 0);
@@ -975,58 +932,17 @@
         }
 
         async function updatePostPollData(postId) {
-            console.log(`[Aggregation] Fetching all votes for post [${postId}]...`);
-            
-            // 1. Get all votes for the post
-            const { data: allVotes, error: votesError } = await db
-                .from('poll_votes')
-                .select('option_text')
-                .eq('post_id', postId);
-
-            if (votesError) {
-                console.error('[Aggregation] Error fetching votes:', votesError);
-                return;
-            }
-            console.log(`[Aggregation] Found ${allVotes.length} total votes.`);
-
-            // 2. Get the original post data (for the options template)
-            const { data: post, error: postError } = await db
-                .from('posts')
-                .select('poll_options')
-                .eq('id', postId)
-                .single();
-            
-            if (postError) {
-                console.error('[Aggregation] Error fetching post data:', postError);
-                return;
-            }
-
-            // 3. Recalculate counts
-            const newPollOptions = post.poll_options.map(option => ({
-                ...option,
-                votes: 0 // Reset votes to 0 before recounting
-            }));
-
+            const { data: allVotes, error: votesError } = await db.from('poll_votes').select('option_text').eq('post_id', postId);
+            if (votesError) { return; }
+            const { data: post, error: postError } = await db.from('posts').select('poll_options').eq('id', postId).single();
+            if (postError) { return; }
+            const newPollOptions = post.poll_options.map(option => ({ ...option, votes: 0 }));
             allVotes.forEach(vote => {
                 const optionToUpdate = newPollOptions.find(opt => opt.option === vote.option_text);
-                if (optionToUpdate) {
-                    optionToUpdate.votes++;
-                }
+                if (optionToUpdate) { optionToUpdate.votes++; }
             });
-            console.log('[Aggregation] Recalculated vote counts:', newPollOptions);
-
-            // 4. Update the posts table
-            console.log(`[Aggregation] Updating post [${postId}] with new vote counts.`);
-            const { error: updateError } = await db
-                .from('posts')
-                .update({ poll_options: newPollOptions })
-                .eq('id', postId);
-
-            if (updateError) {
-                console.error('[Aggregation] Error updating post table:', updateError);
-            } else {
-                console.log('[Aggregation] Post table successfully updated. Realtime event should now trigger for all clients.');
-            }
+            const { error: updateError } = await db.from('posts').update({ poll_options: newPollOptions }).eq('id', postId);
+            if (updateError) { console.error('[Aggregation] Error updating post table:', updateError); }
         }
 
 
@@ -1042,10 +958,7 @@
                 }
             });
 
-            // --- START FIX: Use the new skeleton loader ---
             modalContent.innerHTML = createCommentSkeletonLoader();
-            // --- END FIX ---
-
             commentModal.classList.remove('hidden');
             commentModal.classList.add('flex');
             setTimeout(() => commentModal.classList.add('is-visible'), 10);
@@ -1306,74 +1219,44 @@
             
             const pollOption = e.target.closest('.poll-option');
             if (pollOption) {
-                if (pollOption.getAttribute('data-processing') === 'true') {
-                    console.log('Poll vote is already being processed. Please wait.');
-                    return;
-                }
+                if (pollOption.getAttribute('data-processing') === 'true') { return; }
 
-                // --- START: OPTIMISTIC UI UPDATE ---
-                console.log('[Optimistic] Applying instant visual feedback.');
                 const pollContainer = pollOption.closest('.poll-container');
                 const wasAlreadyVoted = pollOption.classList.contains('user-voted');
                 
-                // Remove highlighting and results from all options
                 pollContainer.querySelectorAll('.poll-option').forEach(opt => opt.classList.remove('user-voted'));
                 pollContainer.querySelectorAll('.poll-progress, .poll-option-percent').forEach(el => el.remove());
 
-                // If the user is selecting a new option (or voting for the first time)
                 if (!wasAlreadyVoted) {
                     pollOption.classList.add('user-voted');
-                    console.log('[Optimistic] Highlighted new option:', pollOption.dataset.option);
-                } else {
-                    console.log('[Optimistic] De-highlighted option for un-vote:', pollOption.dataset.option);
                 }
-                // --- END: OPTIMISTIC UI UPDATE ---
 
                 pollOption.setAttribute('data-processing', 'true');
-                console.log('--- Poll Vote Initiated (background) ---');
                 const postId = pollOption.dataset.postId;
                 const optionText = pollOption.dataset.option;
                 const userId = currentUser.id;
 
-                console.log(`User [${userId}] clicked option "${optionText}" for post [${postId}]`);
-
                 try {
-                    const { data: existingVote, error: findError } = await db
-                        .from('poll_votes')
-                        .select('id, option_text')
-                        .eq('post_id', postId)
-                        .eq('user_id', userId)
-                        .maybeSingle();
-
+                    const { data: existingVote, error: findError } = await db.from('poll_votes').select('id, option_text').eq('post_id', postId).eq('user_id', userId).maybeSingle();
                     if (findError) throw findError;
-
                     if (existingVote) {
                         if (existingVote.option_text === optionText) {
-                            console.log('Existing vote found for the same option. Removing vote.');
                             const { error: deleteError } = await db.from('poll_votes').delete().eq('id', existingVote.id);
                             if (deleteError) throw deleteError;
-                            console.log('Vote successfully removed from poll_votes.');
                         } else {
-                            console.log(`Existing vote found for a different option ("${existingVote.option_text}"). Changing vote.`);
                             const { error: updateError } = await db.from('poll_votes').update({ option_text: optionText }).eq('id', existingVote.id);
                             if (updateError) throw updateError;
-                            console.log('Vote successfully changed in poll_votes.');
                         }
                     } else {
-                        console.log('No existing vote found. Creating new vote.');
                         const { error: insertError } = await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText });
                         if (insertError) throw insertError;
-                        console.log('Vote successfully created in poll_votes.');
                     }
-
                     await updatePostPollData(postId);
-
                 } catch (error) {
                     console.error("Error processing poll vote:", error);
                     showToast("Gagal memproses suara Anda.");
                 } finally {
                     pollOption.removeAttribute('data-processing');
-                    console.log('--- Poll Vote Process Finished ---');
                 }
             }
 
@@ -1387,14 +1270,11 @@
                     const { error } = await db.rpc('repost_post', { post_id_to_repost: postId });
                     if(error) throw error;
                     
-                    // --- START FIX: Smartly move post to top instead of full refresh ---
                     const postElement = document.getElementById(`post-${postId}`);
                     if (postElement) {
-                        // Add animation class for smooth transition
                         postElement.classList.add('post-enter-animation');
                         timeline.prepend(postElement);
                     }
-                    // --- END FIX ---
                 } catch(err) {
                     console.error('Gagal menyalin atau memposting ulang:', err);
                     showToast('Gagal menyalin tautan.');
@@ -1405,7 +1285,6 @@
             if (reactionEmoji) {
                 const postId = globalReactionPopover.dataset.postId;
                 if (!postId) return;
-
                 const reactionType = reactionEmoji.dataset.reaction;
                 db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType })
                   .then(({error}) => {
@@ -1417,7 +1296,7 @@
                         }
                     }
                   });
-                globalReactionPopover.classList.remove('visible'); // Hide after clicking
+                globalReactionPopover.classList.remove('visible');
             }
             
             const likeButton = e.target.closest('.like-button:not(.like-comment-button)');
@@ -1488,12 +1367,8 @@
                 let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2);
                 
                 const margin = 8;
-                if (leftPos < margin) {
-                    leftPos = margin;
-                }
-                if (leftPos + popoverWidth > windowWidth - margin) {
-                    leftPos = windowWidth - popoverWidth - margin;
-                }
+                if (leftPos < margin) { leftPos = margin; }
+                if (leftPos + popoverWidth > windowWidth - margin) { leftPos = windowWidth - popoverWidth - margin; }
                 
                 globalReactionPopover.style.left = `${leftPos}px`;
                 globalReactionPopover.style.top = `${rect.top - 45}px`;
@@ -1584,33 +1459,15 @@
 
         submitPollPostButton.addEventListener('click', async () => {
             const question = pollQuestionInput.value.trim();
-            const options = Array.from(pollOptionsContainer.querySelectorAll('input'))
-                               .map(input => input.value.trim())
-                               .filter(opt => opt !== '');
+            const options = Array.from(pollOptionsContainer.querySelectorAll('input')).map(input => input.value.trim()).filter(opt => opt !== '');
             if(question === '' || options.length < 2) return;
-
             submitPollPostButton.disabled = true;
             submitPollPostButton.textContent = 'Memposting...';
-
             const pollOptionsData = options.map(opt => ({ option: opt, votes: 0 }));
-
-            const postData = {
-                user_id: currentUser.id,
-                content: '',
-                is_poll: true,
-                poll_question: question,
-                poll_options: pollOptionsData
-            };
-            
+            const postData = { user_id: currentUser.id, content: '', is_poll: true, poll_question: question, poll_options: pollOptionsData };
             const { error } = await db.from('posts').insert(postData);
-            if(error) {
-                console.error('Gagal membuat polling:', error);
-                showToast('Gagal membuat polling.');
-            } else {
-                showToast('Polling berhasil dibuat!');
-                closePollModalButton.click();
-                await fetchPosts();
-            }
+            if(error) { showToast('Gagal membuat polling.'); } 
+            else { showToast('Polling berhasil dibuat!'); closePollModalButton.click(); await fetchPosts(); }
             submitPollPostButton.disabled = false;
             submitPollPostButton.textContent = 'Posting Polling';
         });
@@ -1620,20 +1477,11 @@
             if (replyBtn) {
                 const repliedToCommentId = replyBtn.dataset.commentId;
                 const repliedToUsername = replyBtn.dataset.username;
-
                 const repliedToComment = commentsById.get(repliedToCommentId);
                 let newParentId = repliedToCommentId;
                 let current = repliedToComment;
-                while (current && current.parent_comment_id) {
-                    newParentId = current.parent_comment_id;
-                    current = commentsById.get(newParentId);
-                }
-
-                activeReplyTo = { 
-                    parentId: newParentId,
-                    replyToUsernameForDisplay: repliedToUsername
-                };
-
+                while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); }
+                activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername };
                 replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`;
                 replyingToBanner.classList.remove('hidden');
                 commentInput.focus();
@@ -1656,29 +1504,21 @@
                 const commentId = likeCommentBtn.dataset.commentId;
                 if(likeCommentBtn.disabled) return;
                 likeCommentBtn.disabled = true;
-
                 recentlyUpdatedCommentLikes.add(commentId);
                 setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000);
-
                 const wasLiked = likeCommentBtn.dataset.liked === 'true';
                 const countSpan = likeCommentBtn.querySelector('.comment-like-count');
                 const icon = likeCommentBtn.querySelector('i');
                 const originalCount = parseInt(countSpan.textContent);
-
                 likeCommentBtn.dataset.liked = !wasLiked;
                 countSpan.textContent = wasLiked ? originalCount - 1 : originalCount + 1;
                 likeCommentBtn.classList.toggle('text-red-500', !wasLiked);
                 icon.classList.toggle('bi-heart-fill', !wasLiked);
                 icon.classList.toggle('bi-heart', wasLiked);
-                
                 try {
-                    const { error } = await db.rpc('toggle_comment_like', {
-                        comment_id_to_toggle: commentId,
-                        user_id_to_toggle: currentUser.id
-                    });
+                    const { error } = await db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id });
                     if (error) throw error;
                 } catch(error) {
-                    console.error('Error updating comment like:', error.message || error);
                     likeCommentBtn.dataset.liked = wasLiked;
                     countSpan.textContent = originalCount;
                     likeCommentBtn.classList.toggle('text-red-500', wasLiked);
@@ -1698,13 +1538,10 @@
             }
             const deleteCommentBtn = e.target.closest('.delete-comment-button');
             if(deleteCommentBtn) {
-                showConfirmModal(
-                    'Komentar ini akan dihapus secara permanen.',
-                    async () => {
-                        await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId);
-                        await openCommentModal(activePostForComment.id);
-                    }
-                );
+                showConfirmModal('Komentar ini akan dihapus secara permanen.', async () => {
+                    await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId);
+                    await openCommentModal(activePostForComment.id);
+                });
             }
         });
 
@@ -1720,21 +1557,12 @@
             }
 
             const { ids: mentionedUserIds } = await parseMentions(content);
-            
             const parentCommentId = activeReplyTo ? activeReplyTo.parentId : null;
             const replyToUsername = activeReplyTo ? activeReplyTo.replyToUsernameForDisplay : null;
 
-            const { data: newComment, error } = await db.from('comments').insert({ 
-                content, 
-                user_id: currentUser.id, 
-                post_id: activePostForComment.id, 
-                parent_comment_id: parentCommentId,
-                reply_to_username: replyToUsername,
-                mentioned_users: mentionedUserIds
-            }).select('*, post:posts(user_id)').single();
+            const { data: newComment, error } = await db.from('comments').insert({ content, user_id: currentUser.id, post_id: activePostForComment.id, parent_comment_id: parentCommentId, reply_to_username: replyToUsername, mentioned_users: mentionedUserIds }).select('*, post:posts(user_id)').single();
 
             if (error) {
-                console.error('Error submitting comment:', error.message || JSON.stringify(error, null, 2));
                 if (postElementOnTimeline) {
                     const countSpan = postElementOnTimeline.querySelector('.comment-count');
                     countSpan.textContent = parseInt(countSpan.textContent) - 1;
@@ -1745,12 +1573,7 @@
                     await db.from('notifications').insert({ recipient_id: postOwnerId, actor_id: currentUser.id, notification_type: 'comment', post_id: activePostForComment.id });
                 }
                  if (mentionedUserIds.length > 0) {
-                    const notifications = mentionedUserIds.map(userId => ({
-                        recipient_id: userId,
-                        actor_id: currentUser.id,
-                        notification_type: 'mention_comment',
-                        post_id: activePostForComment.id
-                    }));
+                    const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: 'mention_comment', post_id: activePostForComment.id }));
                     await db.from('notifications').insert(notifications);
                 }
                 commentInput.value = '';
@@ -1763,11 +1586,7 @@
 
         closeModalButton.addEventListener('click', () => {
             const videoInModal = modalContent.querySelector('video');
-            if (videoInModal) {
-                videoInModal.pause();
-                videoInModal.src = ''; 
-            }
-
+            if (videoInModal) { videoInModal.pause(); videoInModal.src = ''; }
             commentModal.classList.remove('is-visible');
             setTimeout(() => {
                 commentModal.classList.add('hidden');
@@ -1782,9 +1601,39 @@
 
         function resetComposerStyle() { isFullTextMode = false; fullTextColor = ''; fullTextFont = ''; postContentInput.className = 'w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300'; postContentInput.style.color = 'black'; postContentInput.rows = 3; }
         function updateComposerFullTextStyle() { postImageFile = null; postVideoFile = null; imageUploadInput.value = ''; videoUploadInput.value = ''; mediaPreviewContainer.innerHTML = ''; postContentInput.className = `w-full p-8 text-lg border-none focus:ring-0 resize-none rounded-lg text-center flex items-center justify-center text-white transition-all duration-300 ${fullTextColor} ${fullTextFont}`; postContentInput.style.color = 'white'; postContentInput.rows = 5; submitPostButton.disabled = !postContentInput.value.trim(); }
-        document.getElementById('logout-button').addEventListener('click', async () => { await db.auth.signOut(); window.location.href = 'auth.html'; });
         
-        initialize();
+        // Event listener untuk logout
+        document.getElementById('logout-button').addEventListener('click', async () => { 
+            if (db) {
+                await db.auth.signOut(); 
+            }
+            window.location.href = 'auth.html'; 
+        });
+        
+        // Fungsi utama untuk inisialisasi aplikasi
+        async function initializeApp() {
+            try {
+                // Ambil konfigurasi Supabase dari API
+                const response = await fetch('/api/config');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const config = await response.json();
+                if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
+
+                // Inisialisasi klien Supabase
+                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+                
+                // Panggil fungsi inisialisasi utama setelah Supabase siap
+                initialize();
+
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
+            }
+        }
+
+        // Jalankan aplikasi
+        initializeApp();
     </script>
 </body>
 </html>
