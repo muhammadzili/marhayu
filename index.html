@@ -1336,6 +1336,129 @@
             else { showToast('Polling berhasil dibuat!'); closePollModalButton.click(); await fetchPosts(); }
             submitPollPostButton.disabled = false; submitPollPostButton.textContent = 'Posting Polling';
         });
+
+        // --- START: FIX for Promote Modal ---
+        
+        function validatePromoteForm() {
+            const content = promoteContentInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+            submitPromotePostButton.disabled = !content || !buttonText;
+        }
+
+        function handlePromoteMediaUpload(event, mediaType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            promoteImageFile = mediaType === 'image' ? file : null;
+            promoteVideoFile = mediaType === 'video' ? file : null;
+            promoteImageUpload.value = '';
+            promoteVideoUpload.value = '';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let previewHtml = '';
+                const removeBtnHtml = `<button class="remove-media-btn absolute top-2 right-2 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center text-lg">&times;</button>`;
+                if (mediaType === 'image') {
+                    previewHtml = `<div class="preview-container relative"><img src="${e.target.result}" class="rounded-lg max-h-40">${removeBtnHtml}</div>`;
+                } else {
+                    previewHtml = `<div class="preview-container relative"><video src="${e.target.result}" class="rounded-lg max-h-40" muted loop autoplay></video>${removeBtnHtml}</div>`;
+                }
+                promoteMediaPreview.innerHTML = previewHtml;
+                promoteMediaPreview.querySelector('.remove-media-btn').onclick = () => {
+                    promoteImageFile = null;
+                    promoteVideoFile = null;
+                    promoteMediaPreview.innerHTML = '';
+                    validatePromoteForm();
+                };
+            };
+            reader.readAsDataURL(file);
+            validatePromoteForm();
+        }
+
+        promoteButton.addEventListener('click', () => {
+            promoteModal.classList.remove('hidden');
+            promoteModal.classList.add('flex');
+            setTimeout(() => promoteModal.classList.add('is-visible'), 10);
+        });
+
+        closePromoteModalButton.addEventListener('click', () => {
+            promoteModal.classList.remove('is-visible');
+            setTimeout(() => {
+                promoteModal.classList.add('hidden');
+                promoteModal.classList.remove('flex');
+            }, 250);
+        });
+        
+        promoteModal.addEventListener('click', (e) => {
+            if (e.target === promoteModal) {
+                closePromoteModalButton.click();
+            }
+        });
+
+        promoteImageUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'image'));
+        promoteVideoUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'video'));
+        promoteContentInput.addEventListener('input', validatePromoteForm);
+        promoteButtonTextInput.addEventListener('input', validatePromoteForm);
+        
+        submitPromotePostButton.addEventListener('click', async () => {
+            const content = promoteContentInput.value.trim();
+            const link = promoteLinkInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+
+            if (!content || !buttonText) return;
+
+            submitPromotePostButton.disabled = true;
+            submitPromotePostButton.textContent = 'Memproses...';
+
+            let imageUrl = null, videoUrl = null;
+            const fileToUpload = promoteImageFile || promoteVideoFile;
+
+            if (fileToUpload) {
+                const fileName = `${currentUser.id}/promote_${Date.now()}`;
+                const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload);
+                if (uploadError) {
+                    showToast('Gagal mengunggah media.');
+                    submitPromotePostButton.disabled = false;
+                    submitPromotePostButton.textContent = 'Promosikan';
+                    return;
+                }
+                const { data: urlData } = db.storage.from('media').getPublicUrl(fileName);
+                if (promoteImageFile) imageUrl = urlData.publicUrl;
+                if (promoteVideoFile) videoUrl = urlData.publicUrl;
+            }
+
+            const postData = {
+                content,
+                user_id: currentUser.id,
+                image_url: imageUrl,
+                video_url: videoUrl,
+                is_promotion: true,
+                promotion_link: link || null,
+                promotion_button_text: buttonText
+            };
+
+            const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single();
+
+            if (insertError) {
+                showToast('Gagal mempromosikan postingan.');
+            } else {
+                showToast('Postingan berhasil dipromosikan!');
+                // Reset form and close modal
+                promoteContentInput.value = '';
+                promoteLinkInput.value = '';
+                promoteButtonTextInput.value = '';
+                promoteMediaPreview.innerHTML = '';
+                promoteImageFile = null;
+                promoteVideoFile = null;
+                closePromoteModalButton.click();
+                await fetchPosts();
+            }
+
+            submitPromotePostButton.disabled = false;
+            submitPromotePostButton.textContent = 'Promosikan';
+        });
+
+        // --- END: FIX for Promote Modal ---
         
         modalContent.addEventListener('click', async (e) => {
             const replyBtn = e.target.closest('.reply-button');
@@ -1478,4 +1601,3 @@
     </script>
 </body>
 </html>
-
