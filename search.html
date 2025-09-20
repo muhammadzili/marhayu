@@ -50,7 +50,7 @@
         #tab-container { position: relative; }
         .tab-btn { position: relative; z-index: 10; }
         #tab-indicator { position: absolute; bottom: 0; height: 2px; background-color: black; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        #global-reaction-popover { position: fixed; background-color: white; border-radius: 9999px; padding: 0.25rem 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 0.5rem; z-index: 100; opacity: 0; visibility: hidden; transform: scale(0.9) translateY(10px); transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0.2s; }
+        #global-reaction-popover { position: fixed; background-color: white; border-radius: 9999px; padding: 0.25rem 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 0.5rem; z-index: 1000; opacity: 0; visibility: hidden; transform: scale(0.9) translateY(10px); transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0.2s; }
         #global-reaction-popover.visible { opacity: 1; visibility: visible; transform: scale(1) translateY(0); transition-delay: 0s; }
         .reaction-emoji { font-size: 1.5rem; cursor: pointer; transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .reaction-emoji:hover { transform: scale(1.4); }
@@ -206,6 +206,7 @@
         }
         
         async function subscribeToNotifications() {
+            if (!currentUser) return;
             const updateBadge = async () => {
                 const { count } = await db.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
                  const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
@@ -280,6 +281,7 @@
                 postElement.style.animationDelay = `${index * 100}ms`;
                 container.appendChild(postElement);
             });
+            setupVideoAutoplay();
         }
         
         function renderHashtagResults(hashtags, container) {
@@ -298,12 +300,14 @@
         }
 
         async function searchUsers(query) {
+             if (!currentUser) return [];
              const { data, error } = await db.from('profiles').select('*').or(`full_name.ilike.%${query}%,username.ilike.%${query}%`).neq('id', currentUser.id).limit(20);
              if (error) { console.error('Error searching users:', error); return []; }
              return data;
         }
 
         async function searchPosts(query) {
+             if (!currentUser) return [];
              const { data, error } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).textSearch('content', `'${query}'`, { type: 'websearch', config: 'english' }).order('created_at', { ascending: false }).limit(20);
              if (error) { console.error('Error searching posts:', error); return []; }
              return data.filter(post => {
@@ -317,12 +321,14 @@
         }
 
         async function searchHashtags(query) {
+             if (!currentUser) return [];
              const { data, error } = await db.rpc('search_hashtags', { search_term: query });
              if (error) { console.error('Error searching hashtags:', error); return []; }
              return data;
         }
 
         async function handleSearch() {
+            if (!currentUser) return;
             const query = searchInput.value.trim();
             if (query.length < 1) {
                 searchResultsContainer.innerHTML = '<p class="p-4 text-center text-gray-500">Cari teman, postingan, atau tagar di Marhayu.</p>';
@@ -409,7 +415,7 @@
             const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
             
             const processedContent = post.content.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
-                if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
+                if (mention) return `<a href="profile.html?user_id=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
                 if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
             });
 
@@ -514,18 +520,10 @@
         
         async function parseMentions(text) { const mentionRegex = /@(\w+)/g; const mentions = text.match(mentionRegex); if (!mentions) return { ids: [], usernames: [] }; const usernames = [...new Set(mentions.map(m => m.substring(1)))]; const { data, error } = await db.from('profiles').select('id, username').in('username', usernames); return error ? { ids: [], usernames: [] } : { ids: data.map(u => u.id), usernames: data.map(u => u.username) }; }
         function setupMentionHandler(inputElement, popupElement) { let mentionStartIndex = -1; inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart; const atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => `<div class="mention-item" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-full mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500">@${user.username}</p></div></div>`).join(''); popupElement.classList.remove('hidden'); } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } }); popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } }); }
-        setupMentionHandler(postContentInput, document.getElementById('post-mention-popup'));
+        
         setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
-        postContentInput.addEventListener('input', () => submitPostButton.disabled = !postContentInput.value.trim() && !postImageFile && !postVideoFile);
-        
-        function handleMediaUpload(event, mediaType) { const file = event.target.files[0]; if (!file) return; resetComposerStyle(); postImageFile = mediaType === 'image' ? file : null; postVideoFile = mediaType === 'video' ? file : null; imageUploadInput.value = ''; videoUploadInput.value = ''; const reader = new FileReader(); reader.onload = (e) => { let previewHtml = `<div class="preview-container">${mediaType === 'image' ? `<img src="${e.target.result}" class="rounded-2xl max-h-80">` : `<video src="${e.target.result}" class="rounded-2xl max-h-80" muted loop autoplay></video>`}<button class="remove-media-btn">&times;</button></div>`; mediaPreviewContainer.innerHTML = previewHtml; mediaPreviewContainer.querySelector('.remove-media-btn').onclick = () => { postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = ''; submitPostButton.disabled = !postContentInput.value.trim(); }; }; reader.readAsDataURL(file); submitPostButton.disabled = false; }
-        imageUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'image'));
-        videoUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'video'));
-        
-        submitPostButton.addEventListener('click', async () => { const content = postContentInput.value.trim(); if (!content && !postImageFile && !postVideoFile) return; submitPostButton.disabled = true; submitPostButton.textContent = 'Memposting...'; const { ids: mentionedUserIds } = await parseMentions(content); const hashtags = content.match(/#(\w+)/g)?.map(h => h.substring(1).toLowerCase()) || []; let imageUrl = null, videoUrl = null; const fileToUpload = postImageFile || postVideoFile; if (fileToUpload && !isFullTextMode) { const fileName = `${currentUser.id}/${Date.now()}`; const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload); if (uploadError) { submitPostButton.disabled = false; submitPostButton.textContent = 'Posting'; return; } const { data: urlData } = db.storage.from('media').getPublicUrl(fileName); if (postImageFile) imageUrl = urlData.publicUrl; if (postVideoFile) videoUrl = urlData.publicUrl; } const postData = { content, user_id: currentUser.id, image_url: imageUrl, video_url: videoUrl, is_full_text: isFullTextMode, bg_color: fullTextColor, font_family: fullTextFont, mentioned_users: mentionedUserIds, hashtags: hashtags }; const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single(); if (!insertError && mentionedUserIds.length > 0) { const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: 'mention_post', post_id: newPost.id })); await db.from('notifications').insert(notifications); } postContentInput.value = ''; postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = ''; resetComposerStyle(); await fetchPosts(); submitPostButton.disabled = !postContentInput.value.trim(); submitPostButton.textContent = 'Posting'; });
 
         initializeApp();
     </script>
 </body>
 </html>
-
