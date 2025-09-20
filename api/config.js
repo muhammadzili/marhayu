@@ -1,39 +1,42 @@
 // File: /api/config.js
-// Endpoint ini sekarang lebih aman dengan memeriksa 'Referer' host, 
-// cara ini lebih andal di lingkungan Vercel.
+// Logika diperbarui untuk menangani domain produksi dan preview Vercel dengan benar.
 
 export default function handler(request, response) {
-  // 1. Dapatkan URL asal permintaan (referer) dan host aplikasi dari Vercel
   const referer = request.headers.referer;
-  // VERCEL_URL adalah host kanonis (e.g., marhayu.vercel.app) yang disediakan Vercel
-  const allowedHost = process.env.VERCEL_URL;
   
-  // (Untuk debugging) Kamu bisa melihat log ini di dashboard Vercel
-  console.log("Request Referer:", referer);
-  console.log("Allowed Host (from VERCEL_URL):", allowedHost);
+  // Dapatkan environment dari Vercel ('production', 'preview', 'development')
+  const vercelEnv = process.env.VERCEL_ENV;
+  
+  // Dapatkan host resmi aplikasi
+  // Jika di produksi, gunakan SITE_URL. Jika tidak, gunakan VERCEL_URL.
+  const allowedHost = vercelEnv === 'production' 
+    ? process.env.SITE_URL 
+    : process.env.VERCEL_URL;
 
-  // Pastikan variabel VERCEL_URL ada
+  // (Untuk debugging)
+  console.log("Request Referer:", referer);
+  console.log("Vercel Environment:", vercelEnv);
+  console.log("Allowed Host:", allowedHost);
+
+  // Pastikan host yang diizinkan sudah diatur
   if (!allowedHost) {
       return response.status(500).json({ 
-        error: 'VERCEL_URL environment variable tidak ditemukan.'
+        error: 'Environment variable SITE_URL atau VERCEL_URL tidak ditemukan.'
       });
   }
 
   try {
-    // 2. Ekstrak 'host' dari URL referer
     const refererHost = referer ? new URL(referer).host : null;
-    console.log("Extracted Referer Host:", refererHost);
-
-    // 3. Logika Keamanan Utama:
-    // Bandingkan host dari referer dengan host resmi aplikasi di Vercel.
+    
+    // Logika Keamanan Utama:
+    // Bandingkan host dari referer dengan host yang diizinkan.
     if (refererHost === allowedHost) {
-      // Permintaan valid, kirimkan keys
       const supabaseUrl = process.env.SUPABASE_URL;
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseAnonKey) {
         return response.status(500).json({ 
-          error: 'Environment variables Supabase tidak diatur dengan benar di Vercel.' 
+          error: 'Environment variables Supabase tidak diatur.' 
         });
       }
 
@@ -42,7 +45,7 @@ export default function handler(request, response) {
         supabaseAnonKey,
       });
     } else {
-      // Permintaan tidak valid (host tidak cocok atau referer tidak ada), tolak akses!
+      // Tolak akses jika host tidak cocok
       return response.status(403).json({ 
         error: 'Akses ditolak karena host tidak cocok.',
         details: `Host yang diharapkan: ${allowedHost}, Host yang diterima: ${refererHost || 'tidak ada'}.`
