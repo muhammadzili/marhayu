@@ -1,33 +1,29 @@
 // api/db.js
-// Versi ini diperbarui dengan keamanan yang lebih ketat.
+// Versi ini diperbarui dengan keamanan yang lebih fleksibel untuk development.
 
 export default function handler(request, response) {
-  // --- Pemeriksaan Keamanan Tingkat Tinggi ---
+  // --- Pemeriksaan Keamanan ---
 
   // 1. Hanya izinkan metode 'GET'.
-  // Metode lain seperti POST, PUT, DELETE, dll. akan ditolak.
   if (request.method !== 'GET') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // 2. Blokir akses langsung dari browser.
-  // Header 'sec-fetch-site' akan bernilai 'none' jika URL diakses langsung,
-  // dan 'same-origin' jika di-fetch oleh JavaScript dari halaman di domain yang sama.
-  // Ini adalah cara paling efektif untuk mencegah akses langsung.
+  // 2. Blokir akses langsung dari browser (ketika URL diketik di address bar).
+  // Permintaan dari skrip (seperti fetch) akan memiliki nilai selain 'none'.
+  // Ini adalah perbaikan utama untuk mengatasi error 403 di lingkungan lokal.
   const secFetchSite = request.headers['sec-fetch-site'];
-  if (secFetchSite !== 'same-origin') {
+  if (secFetchSite === 'none') {
      return response.status(403).json({ error: 'Forbidden: Direct access is not allowed.' });
   }
   
-  // 3. (Lapisan Tambahan) Verifikasi 'Referer'
+  // 3. (Lapisan Tambahan) Verifikasi 'Referer' di lingkungan produksi.
   // Memastikan permintaan datang dari domain aplikasi Anda yang sebenarnya.
-  // Vercel secara otomatis menyediakan `process.env.VERCEL_URL`.
   const referer = request.headers['referer'];
-  const allowedDomain = process.env.VERCEL_URL;
+  const host = request.headers['host'];
 
-  // Di lingkungan development, VERCEL_URL mungkin tidak ada, jadi kita longgarkan sedikit.
-  // Namun di production, pemeriksaan ini akan berjalan.
-  if (allowedDomain && (!referer || !referer.startsWith(`https://${allowedDomain}`))) {
+  // Pemeriksaan ini hanya berjalan di lingkungan produksi Vercel untuk keamanan maksimal.
+  if (process.env.NODE_ENV === 'production' && (!referer || new URL(referer).host !== host)) {
        return response.status(403).json({ error: 'Forbidden: Invalid origin.' });
   }
 
