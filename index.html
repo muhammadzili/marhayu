@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -10,9 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // Inisialisasi Tailwind dark mode
+        tailwind.config = {
+          darkMode: 'class',
+        }
+      </script>
     <style>
         html, body { 
-            overflow: hidden;
             height: 100%;
         }
         body { font-family: 'Inter', sans-serif; }
@@ -24,10 +28,12 @@
         .preview-container { position: relative; }
         .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
         .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
+        .dark .comment-pinned .dark\:bg-gray-700 { background-color: rgba(30, 64, 175, 0.2) !important; }
         .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
         .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
         .mention-item:hover { background-color: #f3f4f6; }
         .notification-badge { position: absolute; top: 0.5rem; right: 0.5rem; width: 0.75rem; height: 0.75rem; border-radius: 9999px; background-color: #ef4444; border: 2px solid white; }
+        .dark .notification-badge { border-color: #111827; }
         .custom-video-player { position: relative; background-color: #000; border-radius: 1rem; overflow: hidden; line-height: 0; }
         .custom-video-player video { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 560px; border-radius: 1rem; }
         .video-controls-overlay { position: absolute; inset: 0; background-color: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; cursor: pointer; }
@@ -70,6 +76,7 @@
 
         .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 50% { opacity: .5; } }
+        .dark .skeleton { background-color: #374151; }
 
         .interactive-btn { transition: transform 0.1s ease-out, background-color 0.2s ease; }
         .interactive-btn:active { transform: scale(0.95); }
@@ -146,50 +153,49 @@
             position: absolute;
             bottom: 0;
             height: 2px;
-            background-color: black;
             transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
-<body class="bg-white text-black">
+<body class="bg-white text-black dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
 
     <div class="container mx-auto max-w-4xl flex flex-row md:gap-8 h-full">
         <aside class="hidden md:block w-[280px] flex-shrink-0 pt-8 pr-4">
             <a href="index.html"><img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-10 mb-8"></a>
             <nav class="space-y-1 text-lg sidebar-nav">
-                <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors font-bold text-black"><i class="bi bi-house-door-fill text-2xl"></i><span>Beranda</span></a>
-                <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors"><i class="bi bi-search text-2xl"></i><span>Pencarian</span></a>
-                 <a href="notifications.html" class="relative flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-bold text-black dark:text-white"><i class="bi bi-house-door-fill text-2xl"></i><span>Beranda</span></a>
+                <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><i class="bi bi-search text-2xl"></i><span>Pencarian</span></a>
+                 <a href="notifications.html" class="relative flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     <i class="bi bi-bell text-2xl"></i><span>Notifikasi</span>
                     <span id="notification-badge-sidebar" class="hidden notification-badge"></span>
                 </a>
-                <a href="#" id="profile-link-sidebar" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors"><i class="bi bi-person text-2xl"></i><span>Profil</span></a>
+                <a href="#" id="profile-link-sidebar" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><i class="bi bi-person text-2xl"></i><span>Profil</span></a>
             </nav>
-            <button id="logout-button" class="mt-8 w-full bg-black text-white py-2 rounded-full font-semibold hover:bg-gray-800 transition-colors interactive-btn">Keluar</button>
+            <button id="logout-button" class="mt-8 w-full bg-black text-white py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors interactive-btn">Keluar</button>
         </aside>
 
-        <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 h-full overflow-y-auto">
-            <header class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200">
+        <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 dark:border-gray-700 h-full overflow-y-auto">
+            <header class="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-center p-3 md:hidden">
                     <img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-8">
                 </div>
                 <div id="header-content" class="hidden md:block">
                      <div id="tab-container" class="flex relative">
-                        <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black transition-colors">For You</button>
-                        <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 transition-colors">Following</button>
-                        <div id="tab-indicator"></div>
+                        <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black dark:text-white transition-colors">For You</button>
+                        <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 dark:text-gray-400 transition-colors">Following</button>
+                        <div id="tab-indicator" class="bg-black dark:bg-white"></div>
                     </div>
                     <h1 id="hashtag-header-title" class="text-xl font-bold px-4 py-3 hidden"></h1>
                 </div>
             </header>
 
-            <div class="p-4 border-b border-gray-200 relative">
-                <textarea id="post-content" class="w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300" rows="3" placeholder="Apa yang sedang terjadi?"></textarea>
-                <div id="post-mention-popup" class="mention-popup hidden"></div>
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 relative">
+                <textarea id="post-content" class="w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-white dark:placeholder-gray-400" rows="3" placeholder="Apa yang sedang terjadi?"></textarea>
+                <div id="post-mention-popup" class="mention-popup hidden dark:bg-gray-700 dark:border-gray-600"></div>
                 <div id="media-preview-container" class="mt-2"></div>
                 
                 <div class="flex items-center justify-between mt-2">
-                     <div class="flex items-center space-x-4 text-xl text-gray-500">
+                     <div class="flex items-center space-x-4 text-xl text-gray-500 dark:text-gray-400">
                         <label for="image-upload" class="cursor-pointer hover:text-blue-500"><i class="bi bi-image"></i></label>
                         <input type="file" id="image-upload" class="hidden" accept="image/*">
                         <label for="video-upload" class="cursor-pointer hover:text-green-500"><i class="bi bi-camera-video"></i></label>
@@ -198,53 +204,59 @@
                         <button id="full-text-style-button" class="cursor-pointer hover:text-purple-500"><i class="bi bi-fonts"></i></button>
                         <button id="promote-button" class="cursor-pointer hover:text-yellow-500 hidden"><i class="bi bi-megaphone-fill"></i></button>
                     </div>
-                     <button id="submit-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 interactive-btn" disabled>Posting</button>
+                     <div class="flex items-center">
+                        <button id="theme-toggle" type="button" class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-full text-sm p-2.5 mr-4">
+                            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 11a1 1 0 100 2h1a1 1 0 100-2H3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                        </button>
+                        <button id="submit-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors disabled:opacity-50 interactive-btn" disabled>Posting</button>
+                     </div>
                 </div>
             </div>
 
-            <div id="timeline"><p class="p-4 text-center text-gray-500">Memuat postingan...</p></div>
+            <div id="timeline"><p class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat postingan...</p></div>
         </main>
     </div>
     
-    <nav id="bottom-nav" class="md:hidden fixed bottom-0 w-full bg-white border-t border-black/10 z-20">
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 w-full bg-white border-t border-black/10 dark:bg-gray-900 dark:border-white/10 z-20">
         <div class="flex justify-around items-center h-16">
-            <a href="index.html" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+            <a href="index.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">
                 <i class="bi bi-house-door text-2xl"></i>
             </a>
-            <a href="search.html" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+            <a href="search.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">
                 <i class="bi bi-search text-2xl"></i>
             </a>
-            <a href="notifications.html" class="relative flex flex-col items-center justify-center text-gray-500 hover:text-black">
+            <a href="notifications.html" class="relative flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">
                 <i class="bi bi-bell text-2xl"></i>
                 <span id="notification-badge-bottom" class="hidden notification-badge"></span>
             </a>
-            <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 hover:text-black">
+            <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">
                 <i class="bi bi-person text-2xl"></i>
             </a>
         </div>
     </nav>
 
-    <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
-        <div class="bg-white rounded-2xl w-full max-w-lg mx-4 border border-black/20 overflow-hidden flex flex-col max-h-[90vh] modal-box">
-            <div class="flex justify-between items-center p-4 border-b border-black/10">
+    <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/50 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
                 <h2 class="font-bold text-lg">Postingan</h2>
                 <button id="close-modal-button" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
             </div>
             <div id="modal-content" class="p-4 overflow-y-auto modal-content"></div>
-             <div class="p-4 border-t border-black/10 mt-auto relative">
-                 <div id="replying-to-banner" class="hidden text-sm text-gray-500 mb-2"></div>
+             <div class="p-4 border-t border-black/10 dark:border-white/10 mt-auto relative">
+                 <div id="replying-to-banner" class="hidden text-sm text-gray-500 dark:text-gray-400 mb-2"></div>
                 <div class="flex space-x-2">
-                    <input type="text" id="comment-input" placeholder="Tulis komentar..." class="w-full px-4 py-2 border border-black/20 rounded-lg focus:outline-none focus:ring-1 focus:ring-black">
-                    <button id="submit-comment" class="bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 interactive-btn">Kirim</button>
+                    <input type="text" id="comment-input" placeholder="Tulis komentar..." class="w-full px-4 py-2 border border-black/20 dark:bg-gray-700 dark:border-white/20 dark:text-white dark:focus:ring-white rounded-lg focus:outline-none focus:ring-1 focus:ring-black">
+                    <button id="submit-comment" class="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-200 interactive-btn">Kirim</button>
                 </div>
-                 <div id="comment-mention-popup" class="mention-popup hidden"></div>
+                 <div id="comment-mention-popup" class="mention-popup hidden dark:bg-gray-700 dark:border-gray-600"></div>
             </div>
         </div>
     </div>
     
-    <div id="full-text-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
-        <div class="bg-white rounded-2xl w-full max-w-sm mx-4 border border-black/20 overflow-hidden">
-            <div class="flex justify-between items-center p-4 border-b border-black/10">
+    <div id="full-text-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/50 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm mx-4 border border-black/20 dark:border-white/10 overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
                 <h2 class="font-bold text-lg">Gaya Teks Penuh</h2>
                 <button id="close-full-text-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
             </div>
@@ -262,74 +274,74 @@
                 <div>
                     <h3 class="font-semibold mb-2">Gaya Huruf</h3>
                     <div class="grid grid-cols-3 gap-2" id="font-swatches">
-                        <button class="p-2 border rounded-lg font-inter" data-font="font-inter">Netral</button>
-                        <button class="p-2 border rounded-lg font-lora" data-font="font-lora">Elegan</button>
-                        <button class="p-2 border rounded-lg font-playfair" data-font="font-playfair">Klasik</button>
+                        <button class="p-2 border rounded-lg font-inter dark:border-gray-600" data-font="font-inter">Netral</button>
+                        <button class="p-2 border rounded-lg font-lora dark:border-gray-600" data-font="font-lora">Elegan</button>
+                        <button class="p-2 border rounded-lg font-playfair dark:border-gray-600" data-font="font-playfair">Klasik</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-40 items-center justify-center hidden z-[60]">
-        <div class="bg-white rounded-2xl w-full max-w-sm mx-4 border border-black/10 overflow-hidden modal-box text-center p-6">
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-40 dark:bg-black/60 items-center justify-center hidden z-[60]">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm mx-4 border border-black/10 dark:border-white/10 overflow-hidden modal-box text-center p-6">
             <div class="text-5xl text-red-500 mb-4"><i class="bi bi-exclamation-triangle"></i></div>
             <h2 id="confirm-modal-title" class="font-bold text-lg mb-2">Konfirmasi Aksi</h2>
-            <p id="confirm-modal-message" class="text-gray-600 mb-6">Apakah Anda yakin ingin melanjutkan?</p>
+            <p id="confirm-modal-message" class="text-gray-600 dark:text-gray-300 mb-6">Apakah Anda yakin ingin melanjutkan?</p>
             <div class="flex justify-center gap-4">
-                <button id="confirm-modal-cancel" class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 interactive-btn">Batal</button>
+                <button id="confirm-modal-cancel" class="w-full px-4 py-2 bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 interactive-btn">Batal</button>
                 <button id="confirm-modal-confirm" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 interactive-btn">Hapus</button>
             </div>
         </div>
     </div>
     
-    <div id="poll-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
-        <div class="bg-white rounded-2xl w-full max-w-lg mx-4 border border-black/20 overflow-hidden flex flex-col max-h-[90vh] modal-box">
-            <div class="flex justify-between items-center p-4 border-b border-black/10">
+    <div id="poll-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/50 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
                 <h2 class="font-bold text-lg">Buat Polling</h2>
                 <button id="close-poll-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
             </div>
             <div class="p-4 space-y-4">
-                <textarea id="poll-question" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none" rows="2" placeholder="Pertanyaan polling..."></textarea>
+                <textarea id="poll-question" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none dark:bg-gray-700 dark:border-white/20 dark:text-white dark:focus:ring-white" rows="2" placeholder="Pertanyaan polling..."></textarea>
                 <div id="poll-options-container" class="space-y-2 max-h-60 overflow-y-auto">
                     <!-- Poll options will be added here -->
                 </div>
                 <button id="add-poll-option" class="text-sm text-blue-600 hover:underline font-semibold">+ Tambah Opsi</button>
             </div>
-            <div class="p-4 border-t border-black/10 mt-auto text-right">
-                <button id="submit-poll-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 interactive-btn" disabled>Posting Polling</button>
+            <div class="p-4 border-t border-black/10 dark:border-white/10 mt-auto text-right">
+                <button id="submit-poll-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors disabled:opacity-50 interactive-btn">Posting Polling</button>
             </div>
         </div>
     </div>
     
     <!-- Promote Modal -->
-    <div id="promote-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
-        <div class="bg-white rounded-2xl w-full max-w-lg mx-4 border border-black/20 overflow-hidden flex flex-col max-h-[90vh] modal-box">
-            <div class="flex justify-between items-center p-4 border-b border-black/10">
+    <div id="promote-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/50 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
                 <h2 class="font-bold text-lg">Buat Postingan Promosi</h2>
                 <button type="button" id="close-promote-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
             </div>
             <div class="p-4 space-y-4 overflow-y-auto">
-                <textarea id="promote-content" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none" rows="3" placeholder="Tulis konten iklan..."></textarea>
+                <textarea id="promote-content" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none dark:bg-gray-700 dark:border-white/20 dark:text-white dark:focus:ring-white" rows="3" placeholder="Tulis konten iklan..."></textarea>
                 <div id="promote-media-preview" class="mt-2"></div>
-                <div class="flex items-center space-x-4 text-xl text-gray-500">
+                <div class="flex items-center space-x-4 text-xl text-gray-500 dark:text-gray-400">
                     <label for="promote-image-upload" class="cursor-pointer hover:text-blue-500"><i class="bi bi-image"></i></label>
                     <input type="file" id="promote-image-upload" class="hidden" accept="image/*">
                     <label for="promote-video-upload" class="cursor-pointer hover:text-green-500"><i class="bi bi-camera-video"></i></label>
                     <input type="file" id="promote-video-upload" class="hidden" accept="video/*">
                 </div>
-                <hr>
+                <hr class="dark:border-gray-600">
                 <div>
-                    <label for="promote-link" class="block text-sm font-medium text-gray-700">URL Link Tombol (Opsional)</label>
-                    <input type="url" id="promote-link" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://contoh.com">
+                    <label for="promote-link" class="block text-sm font-medium text-gray-700 dark:text-gray-300">URL Link Tombol (Opsional)</label>
+                    <input type="url" id="promote-link" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" placeholder="https://contoh.com">
                 </div>
                 <div>
-                    <label for="promote-button-text" class="block text-sm font-medium text-gray-700">Teks Tombol</label>
-                    <input type="text" id="promote-button-text" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Pelajari Lebih Lanjut">
+                    <label for="promote-button-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Teks Tombol</label>
+                    <input type="text" id="promote-button-text" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" placeholder="Pelajari Lebih Lanjut">
                 </div>
             </div>
-            <div class="p-4 border-t border-black/10 mt-auto text-right">
-                <button id="submit-promote-post" class="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 interactive-btn" disabled>Promosikan</button>
+            <div class="p-4 border-t border-black/10 dark:border-white/10 mt-auto text-right">
+                <button id="submit-promote-post" class="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 interactive-btn">Promosikan</button>
             </div>
         </div>
     </div>
@@ -337,11 +349,45 @@
 
     <div id="toast-notification">Tautan telah disalin!</div>
     
-    <div id="global-reaction-popover">
+    <div id="global-reaction-popover" class="dark:bg-gray-700">
         <!-- Emoji content will be populated by JS -->
     </div>
 
     <script>
+        // --- THEME SWITCHER LOGIC ---
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleLightIcon.classList.add('hidden');
+                themeToggleDarkIcon.classList.remove('hidden');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        });
+        // --- END THEME SWITCHER LOGIC ---
+
         const { createClient } = supabase;
         let db; 
         let activeTab = 'for-you'; // State for current tab
@@ -387,7 +433,7 @@
 
         function createSkeletonPostElement() {
             const div = document.createElement('div');
-            div.className = 'p-4 border-b border-gray-200 flex space-x-4';
+            div.className = 'p-4 border-b border-gray-200 dark:border-gray-700 flex space-x-4';
             div.innerHTML = `
                 <div class="w-12 h-12 rounded-full skeleton flex-shrink-0"></div>
                 <div class="w-full space-y-3">
@@ -406,26 +452,26 @@
             return `
                 <div class="p-4 animate-pulse">
                     <div class="flex space-x-4">
-                        <div class="w-12 h-12 rounded-full bg-gray-200 flex-shrink-0"></div>
+                        <div class="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
                         <div class="w-full space-y-3">
-                            <div class="w-1/2 h-5 bg-gray-200 rounded"></div>
-                            <div class="w-full h-4 bg-gray-200 rounded"></div>
-                            <div class="w-3/4 h-4 bg-gray-200 rounded"></div>
+                            <div class="w-1/2 h-5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div class="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div class="w-3/4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
                         </div>
                     </div>
-                    <hr class="my-4 border-gray-200">
+                    <hr class="my-4 border-gray-200 dark:border-gray-600">
                     <div class="flex space-x-3 mt-4">
-                        <div class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0"></div>
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
                         <div class="flex-1 space-y-2">
-                            <div class="w-1/3 h-4 bg-gray-200 rounded"></div>
-                            <div class="w-full h-8 bg-gray-200 rounded-xl"></div>
+                            <div class="w-1/3 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div class="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
                         </div>
                     </div>
                     <div class="flex space-x-3 mt-4">
-                        <div class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0"></div>
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
                         <div class="flex-1 space-y-2">
-                            <div class="w-1/4 h-4 bg-gray-200 rounded"></div>
-                            <div class="w-full h-12 bg-gray-200 rounded-xl"></div>
+                            <div class="w-1/4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div class="w-full h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
                         </div>
                     </div>
                 </div>
@@ -504,8 +550,8 @@
                 const linkPage = link.getAttribute('href').split('/').pop();
                 const icon = link.querySelector('i');
                 if (linkPage === currentPage) {
-                    link.classList.remove('text-gray-500');
-                    link.classList.add('text-black');
+                    link.classList.remove('text-gray-500', 'dark:text-gray-400');
+                    link.classList.add('text-black', 'dark:text-white');
                     if (icon.classList.contains('bi-house-door')) icon.className = 'bi bi-house-door-fill text-2xl';
                     else if (icon.classList.contains('bi-search')) icon.className = 'bi bi-search-heart-fill text-2xl';
                     else if (icon.classList.contains('bi-bell')) icon.className = 'bi bi-bell-fill text-2xl';
@@ -531,18 +577,18 @@
             if (!indicator || !forYouBtn || !followingBtn) return;
 
             if (activeTab === 'for-you') {
-                forYouBtn.classList.add('text-black');
-                forYouBtn.classList.remove('text-gray-500');
-                followingBtn.classList.add('text-gray-500');
-                followingBtn.classList.remove('text-black');
+                forYouBtn.classList.add('text-black', 'dark:text-white');
+                forYouBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+                followingBtn.classList.add('text-gray-500', 'dark:text-gray-400');
+                followingBtn.classList.remove('text-black', 'dark:text-white');
                 
                 indicator.style.left = `${forYouBtn.offsetLeft}px`;
                 indicator.style.width = `${forYouBtn.offsetWidth}px`;
             } else {
-                followingBtn.classList.add('text-black');
-                followingBtn.classList.remove('text-gray-500');
-                forYouBtn.classList.add('text-gray-500');
-                forYouBtn.classList.remove('text-black');
+                followingBtn.classList.add('text-black', 'dark:text-white');
+                followingBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+                forYouBtn.classList.add('text-gray-500', 'dark:text-gray-400');
+                forYouBtn.classList.remove('text-black', 'dark:text-white');
 
                 indicator.style.left = `${followingBtn.offsetLeft}px`;
                 indicator.style.width = `${followingBtn.offsetWidth}px`;
@@ -660,7 +706,7 @@
             const finalPosts = [...promotions, ...regularPosts];
 
             if (finalPosts.length === 0) {
-                timeline.innerHTML = `<p class="p-4 text-center text-gray-500">Tidak ada postingan untuk ditampilkan.</p>`;
+                timeline.innerHTML = `<p class="p-4 text-center text-gray-500 dark:text-gray-400">Tidak ada postingan untuk ditampilkan.</p>`;
             } else {
                 const postElements = finalPosts.map((post, index) => {
                     const postElement = createPostElement(post);
@@ -774,7 +820,7 @@
         
         function createPostElement(post) { 
             const div = document.createElement('div');
-            div.className = 'p-4 border-b border-gray-200 flex space-x-4 post-enter-animation';
+            div.className = 'p-4 border-b border-gray-200 dark:border-gray-700 flex space-x-4 post-enter-animation';
             div.id = `post-${post.id}`;
             const profile = post.profiles;
             if (!profile) return div;
@@ -794,7 +840,7 @@
                  const copiedDate = new Date(post.last_copied_at);
                  const createdDate = new Date(post.created_at);
                  if (Date.now() - copiedDate.getTime() < 5 * 60 * 1000 && Math.abs(copiedDate.getTime() - createdDate.getTime()) > 1000) {
-                    copiedLabelHtml = `<div class="copied-post-label"><i class="bi bi-link-45deg"></i> Baru saja dibagikan</div>`;
+                    copiedLabelHtml = `<div class="copied-post-label dark:bg-gray-700 dark:text-gray-300"><i class="bi bi-link-45deg"></i> Baru saja dibagikan</div>`;
                  }
             }
             
@@ -807,8 +853,8 @@
                     const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
                     const hasVotedThis = userVote && userVote.option_text === option.option;
                     const showResults = !!userVote;
-                    return `<div class="poll-option ${hasVotedThis ? 'user-voted' : ''}" data-option="${option.option}" data-post-id="${post.id}">
-                            ${showResults ? `<div class="poll-progress" style="width: ${percent}%;"></div>` : ''}
+                    return `<div class="poll-option dark:border-gray-600 dark:hover:border-indigo-400 ${hasVotedThis ? 'user-voted dark:border-indigo-400 dark:bg-indigo-900/50' : ''}" data-option="${option.option}" data-post-id="${post.id}">
+                            ${showResults ? `<div class="poll-progress dark:bg-indigo-500/60" style="width: ${percent}%;"></div>` : ''}
                             <div class="poll-option-content">
                                 <span>${option.option}</span>
                                 ${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}
@@ -819,15 +865,15 @@
                     <div class="mt-3 space-y-2 poll-container" id="poll-${post.id}">
                         <p class="font-bold text-lg">${post.poll_question}</p>
                         ${optionsHtml}
-                        <p class="text-xs text-gray-500 text-right">${totalVotes} suara</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 text-right">${totalVotes} suara</p>
                     </div>`;
             } else if (post.is_full_text) {
                 postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
             } else {
                 let mediaHtml = '';
-                if (post.image_url) mediaHtml = `<img src="${post.image_url}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 w-full object-cover">`;
+                if (post.image_url) mediaHtml = `<img src="${post.image_url}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
                 else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}">
-                                    <video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
+                                    <video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-gray-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
                                     <div class="video-controls-overlay"> <button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button> <button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button> </div>
                                     <div class="video-progress-bar"><div class="video-progress-filled"></div></div>
                                 </div>`;
@@ -845,28 +891,28 @@
             }, {});
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
-            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill ${userReaction?.reaction_type === type ? 'user-reacted' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             
-            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 font-semibold mt-1">Sponsored by ${profile.full_name}</p>` : '';
+            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-1">Sponsored by ${profile.full_name}</p>` : '';
             
             div.innerHTML = `
-                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200" loading="lazy"></a></div>
+                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700" loading="lazy"></a></div>
                 <div class="w-full">
                     <div class="flex justify-between items-start">
                         <div>
                             <a href="profile.html?user_id=${profile.id}" class="hover:underline">
                                 <p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
-                                <span class="ml-2 text-sm text-gray-500 font-normal">@${profile.username}</span></p>
+                                <span class="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">@${profile.username}</span></p>
                             </a>
-                            <p class="text-xs text-gray-500">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
                         </div>
-                        ${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 text-xl">&times;</button>` : ''}
+                        ${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 text-xl">&times;</button>` : ''}
                     </div>
                     ${copiedLabelHtml}
                     ${postContentHtml}
                     ${sponsoredLabel}
                     <div class="reaction-summary">${reactionSummaryHtml}</div>
-                    <div class="flex items-center justify-around text-gray-500 mt-3">
+                    <div class="flex items-center justify-around text-gray-500 dark:text-gray-400 mt-3">
                         <button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button>
                         <button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button>
                         <button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button>
@@ -894,7 +940,7 @@
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
             const summaryContainer = postElement.querySelector('.reaction-summary');
-            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill ${userReaction?.reaction_type === type ? 'user-reacted' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             const reactionButton = postElement.querySelector('.reactions-container button');
             if (reactionButton) reactionButton.classList.toggle('text-yellow-500', !!userReaction);
         }
@@ -910,12 +956,14 @@
                 if (!optionData) return;
                 const hasVotedThis = userVote && userVote.option_text === optionText;
                 optionEl.classList.toggle('user-voted', hasVotedThis);
+                optionEl.classList.toggle('dark:border-indigo-400', hasVotedThis);
+                optionEl.classList.toggle('dark:bg-indigo-900/50', hasVotedThis);
                 const percent = totalVotes > 0 ? Math.round((optionData.votes / totalVotes) * 100) : 0;
                 let progressEl = optionEl.querySelector('.poll-progress');
                 let percentEl = optionEl.querySelector('.poll-option-percent');
                 const contentEl = optionEl.querySelector('.poll-option-content');
                 if (userVote) {
-                    if (!progressEl) { progressEl = document.createElement('div'); progressEl.className = 'poll-progress'; optionEl.prepend(progressEl); }
+                    if (!progressEl) { progressEl = document.createElement('div'); progressEl.className = 'poll-progress dark:bg-indigo-500/60'; optionEl.prepend(progressEl); }
                     if (!percentEl) { percentEl = document.createElement('span'); percentEl.className = 'poll-option-percent'; if(contentEl) contentEl.appendChild(percentEl); }
                     percentEl.textContent = `${percent}%`;
                     setTimeout(() => { if (progressEl) progressEl.style.width = `${percent}%`; }, 10);
@@ -944,20 +992,20 @@
             const processedContent = comment.content.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0">
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0">
                 <div class="flex-1">
-                    <div class="bg-gray-100 rounded-xl p-3">
-                        ${comment.is_pinned ? '<div class="text-xs text-gray-500 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}
+                    <div class="bg-gray-100 dark:bg-gray-700 rounded-xl p-3">
+                        ${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}
                         <div class="flex justify-between items-center">
                             <a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a>
-                            <div class="flex items-center text-gray-400">
+                            <div class="flex items-center text-gray-400 dark:text-gray-500">
                                 ${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}
-                                ${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}
+                                ${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}
                             </div>
                         </div>
                         <p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p>
                     </div>
-                    <div class="flex items-center space-x-4 text-xs text-gray-500 mt-1 pl-2">
+                    <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400 mt-1 pl-2">
                         <button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button>
                         <button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button>
                         <span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span>
@@ -1028,7 +1076,7 @@
             modalContent.innerHTML = '';
             modalContent.appendChild(postElement);
             const hr = document.createElement('hr');
-            hr.className = 'my-4';
+            hr.className = 'my-4 dark:border-gray-600';
             modalContent.appendChild(hr);
             modalContent.appendChild(commentListContainer);
             const videoInModal = modalContent.querySelector('video');
@@ -1057,7 +1105,7 @@
                         mentionStartIndex = atIndex;
                         const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5);
                         if (users && users.length > 0) {
-                            popupElement.innerHTML = users.map(user => `<div class="mention-item" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-full mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500">@${user.username}</p></div></div>`).join('');
+                            popupElement.innerHTML = users.map(user => `<div class="mention-item dark:hover:bg-gray-600" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-full mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500 dark:text-gray-400">@${user.username}</p></div></div>`).join('');
                             popupElement.classList.remove('hidden');
                         } else { popupElement.classList.add('hidden'); }
                     } else { popupElement.classList.add('hidden'); }
@@ -1298,7 +1346,7 @@
         function addPollOptionInput(value = '') {
             const optionDiv = document.createElement('div');
             optionDiv.className = 'flex items-center space-x-2';
-            optionDiv.innerHTML = `<input type="text" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-black" placeholder="Opsi"><button class="remove-poll-option text-red-500 hover:text-red-700 text-xl">&times;</button>`;
+            optionDiv.innerHTML = `<input type="text" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-black dark:bg-gray-700 dark:border-white/20 dark:text-white dark:focus:ring-white" placeholder="Opsi"><button class="remove-poll-option text-red-500 hover:text-red-700 text-xl">&times;</button>`;
             pollOptionsContainer.appendChild(optionDiv);
             optionDiv.querySelector('.remove-poll-option').addEventListener('click', () => { if (pollOptionsContainer.children.length > 2) { optionDiv.remove(); validatePollForm(); } });
             optionDiv.querySelector('input').addEventListener('input', validatePollForm);
@@ -1575,7 +1623,7 @@
             }, 250);
         });
 
-        function resetComposerStyle() { isFullTextMode = false; fullTextColor = ''; fullTextFont = ''; postContentInput.className = 'w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300'; postContentInput.style.color = 'black'; postContentInput.rows = 3; }
+        function resetComposerStyle() { isFullTextMode = false; fullTextColor = ''; fullTextFont = ''; postContentInput.className = 'w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-white dark:placeholder-gray-400'; postContentInput.style.color = ''; postContentInput.rows = 3; }
         function updateComposerFullTextStyle() { postImageFile = null; postVideoFile = null; imageUploadInput.value = ''; videoUploadInput.value = ''; mediaPreviewContainer.innerHTML = ''; postContentInput.className = `w-full p-8 text-lg border-none focus:ring-0 resize-none rounded-lg text-center flex items-center justify-center text-white transition-all duration-300 ${fullTextColor} ${fullTextFont}`; postContentInput.style.color = 'white'; postContentInput.rows = 5; submitPostButton.disabled = !postContentInput.value.trim(); }
         
         document.getElementById('logout-button').addEventListener('click', async () => { if (db) { await db.auth.signOut(); } window.location.href = 'auth.html'; });
@@ -1594,7 +1642,7 @@
                 window.addEventListener('resize', updateTabUI); // Add resize listener for indicator
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
+                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-gray-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
             }
         }
 
