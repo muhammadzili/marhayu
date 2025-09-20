@@ -62,10 +62,10 @@
         .reaction-pill { display: flex; align-items: center; gap: 0.25rem; background-color: #eef2ff; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
         .user-reacted { background-color: #c7d2fe; border: 1px solid #818cf8; }
 
-        #comment-modal, #confirm-modal, #poll-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
-        #comment-modal.is-visible, #confirm-modal.is-visible, #poll-modal.is-visible { opacity: 1; visibility: visible; }
-        #comment-modal .modal-box, #confirm-modal .modal-box, #poll-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
-        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #poll-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
+        #comment-modal, #confirm-modal, #poll-modal, #promote-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
+        #comment-modal.is-visible, #confirm-modal.is-visible, #poll-modal.is-visible, #promote-modal.is-visible { opacity: 1; visibility: visible; }
+        #comment-modal .modal-box, #confirm-modal .modal-box, #poll-modal .modal-box, #promote-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
+        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #poll-modal.is-visible .modal-box, #promote-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
 
         .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 50% { opacity: .5; } }
@@ -134,7 +134,6 @@
             transition-delay: 0s;
         }
 
-        /* Improved Tab Styles */
         #tab-container {
             position: relative;
         }
@@ -170,17 +169,13 @@
 
         <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 h-full overflow-y-auto">
             <header class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200">
-                 <div class="flex items-center justify-between p-3 md:hidden">
+                <div class="flex items-center justify-center p-3 md:hidden">
                     <img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-8">
-                    <a id="ads-button-mobile" href="create-promote.html" class="hidden bg-yellow-400 text-black px-3 py-1 rounded-full font-bold text-sm">ADS</a>
                 </div>
                 <div id="header-content" class="hidden md:block">
-                     <div id="tab-container" class="flex relative items-center">
-                        <div class="flex-1 flex">
-                            <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black transition-colors">For You</button>
-                            <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 transition-colors">Following</button>
-                        </div>
-                        <a id="ads-button-desktop" href="create-promote.html" class="hidden absolute right-4 top-1/2 -translate-y-1/2 bg-yellow-400 text-black px-4 py-1 rounded-full font-bold text-sm">ADS</a>
+                     <div id="tab-container" class="flex relative">
+                        <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black transition-colors">For You</button>
+                        <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 transition-colors">Following</button>
                         <div id="tab-indicator"></div>
                     </div>
                     <h1 id="hashtag-header-title" class="text-xl font-bold px-4 py-3 hidden"></h1>
@@ -200,6 +195,7 @@
                         <input type="file" id="video-upload" class="hidden" accept="video/*">
                         <button id="poll-button" class="cursor-pointer hover:text-orange-500"><i class="bi bi-bar-chart-line"></i></button>
                         <button id="full-text-style-button" class="cursor-pointer hover:text-purple-500"><i class="bi bi-fonts"></i></button>
+                        <button id="promote-button" class="cursor-pointer hover:text-yellow-500 hidden"><i class="bi bi-megaphone-fill"></i></button>
                     </div>
                      <button id="submit-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 interactive-btn" disabled>Posting</button>
                 </div>
@@ -304,6 +300,39 @@
             </div>
         </div>
     </div>
+    
+    <!-- Promote Modal -->
+    <div id="promote-modal" class="fixed inset-0 bg-black bg-opacity-30 items-center justify-center hidden z-50">
+        <div class="bg-white rounded-2xl w-full max-w-lg mx-4 border border-black/20 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10">
+                <h2 class="font-bold text-lg">Buat Postingan Promosi</h2>
+                <button type="button" id="close-promote-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto">
+                <textarea id="promote-content" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none" rows="3" placeholder="Tulis konten iklan..."></textarea>
+                <div id="promote-media-preview" class="mt-2"></div>
+                <div class="flex items-center space-x-4 text-xl text-gray-500">
+                    <label for="promote-image-upload" class="cursor-pointer hover:text-blue-500"><i class="bi bi-image"></i></label>
+                    <input type="file" id="promote-image-upload" class="hidden" accept="image/*">
+                    <label for="promote-video-upload" class="cursor-pointer hover:text-green-500"><i class="bi bi-camera-video"></i></label>
+                    <input type="file" id="promote-video-upload" class="hidden" accept="video/*">
+                </div>
+                <hr>
+                <div>
+                    <label for="promote-link" class="block text-sm font-medium text-gray-700">URL Link Tombol (Opsional)</label>
+                    <input type="url" id="promote-link" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://contoh.com">
+                </div>
+                <div>
+                    <label for="promote-button-text" class="block text-sm font-medium text-gray-700">Teks Tombol</label>
+                    <input type="text" id="promote-button-text" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Pelajari Lebih Lanjut">
+                </div>
+            </div>
+            <div class="p-4 border-t border-black/10 mt-auto text-right">
+                <button id="submit-promote-post" class="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 interactive-btn" disabled>Promosikan</button>
+            </div>
+        </div>
+    </div>
+
 
     <div id="toast-notification">Tautan telah disalin!</div>
     
@@ -317,6 +346,7 @@
         let activeTab = 'for-you'; // State for current tab
 
         let currentUser = null, currentUserProfile = null, postImageFile = null, postVideoFile = null, activePostForComment = null, isFullTextMode = false, fullTextColor = '', fullTextFont = '', activeReplyTo = null;
+        let promoteImageFile = null, promoteVideoFile = null;
         let commentsById = new Map();
         let confirmCallbackHolder = () => {};
         let followingIds = [];
@@ -337,6 +367,18 @@
         const forYouTab = document.getElementById('for-you-tab');
         const followingTab = document.getElementById('following-tab');
         
+        // Promote Modal Elements
+        const promoteButton = document.getElementById('promote-button');
+        const promoteModal = document.getElementById('promote-modal');
+        const closePromoteModalButton = document.getElementById('close-promote-modal');
+        const submitPromotePostButton = document.getElementById('submit-promote-post');
+        const promoteContentInput = document.getElementById('promote-content');
+        const promoteImageUpload = document.getElementById('promote-image-upload');
+        const promoteVideoUpload = document.getElementById('promote-video-upload');
+        const promoteMediaPreview = document.getElementById('promote-media-preview');
+        const promoteLinkInput = document.getElementById('promote-link');
+        const promoteButtonTextInput = document.getElementById('promote-button-text');
+
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions
             .map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`)
@@ -521,9 +563,8 @@
             }
             currentUser = session.user;
 
-            if(currentUser.email === 'ads@marhayu.com') {
-                document.getElementById('ads-button-desktop').classList.remove('hidden');
-                document.getElementById('ads-button-mobile').classList.remove('hidden');
+            if(currentUser.id === '6ebc1ca0-b22d-4cba-9049-76051742da2f') {
+                promoteButton.classList.remove('hidden');
             }
 
             const { data: profileData } = await db.from('profiles').select('username').eq('id', currentUser.id).single();
@@ -613,14 +654,9 @@
                  filteredPosts = shuffle(filteredPosts);
             }
             
-            // --- PROMOTION LOGIC ---
-            // Find promotions and regular posts
             const promotions = filteredPosts.filter(p => p.is_promotion);
             const regularPosts = filteredPosts.filter(p => !p.is_promotion);
-
-            // Re-assemble the timeline with promotions at the top
             const finalPosts = [...promotions, ...regularPosts];
-            // --- END PROMOTION LOGIC ---
 
             if (finalPosts.length === 0) {
                 timeline.innerHTML = `<p class="p-4 text-center text-gray-500">Tidak ada postingan untuk ditampilkan.</p>`;
