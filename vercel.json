@@ -1,0 +1,14 @@
+{
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/api/db.js",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://marhayu.vercel.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-Requested-With, Content-Type, Accept" }
+      ]
+    }
+  ]
+}
+
