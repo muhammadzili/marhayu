@@ -1075,7 +1075,6 @@
             });
         }
         
-        // ... (Sisa fungsi event listener dan helper lainnya tetap sama) ...
         setupMentionHandler(postContentInput, document.getElementById('post-mention-popup'));
         setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
         postContentInput.addEventListener('input', () => submitPostButton.disabled = !postContentInput.value.trim() && !postImageFile && !postVideoFile);
