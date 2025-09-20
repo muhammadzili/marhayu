@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beranda - Marhayu</title>
     <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap)" rel="stylesheet">
+    <link rel="stylesheet" href="[https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css](https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css)">
+    <script src="[https://unpkg.com/@supabase/supabase-js@2](https://unpkg.com/@supabase/supabase-js@2)"></script>
     <style>
         html, body { 
             overflow: hidden;
@@ -133,13 +133,29 @@
             visibility: visible;
             transition-delay: 0s;
         }
+
+        /* Improved Tab Styles */
+        #tab-container {
+            position: relative;
+        }
+        .tab-btn {
+            position: relative;
+            z-index: 10;
+        }
+        #tab-indicator {
+            position: absolute;
+            bottom: 0;
+            height: 2px;
+            background-color: black;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 <body class="bg-white text-black">
 
     <div class="container mx-auto max-w-4xl flex flex-row md:gap-8 h-full">
         <aside class="hidden md:block w-[280px] flex-shrink-0 pt-8 pr-4">
-            <a href="index.html"><img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-10 mb-8"></a>
+            <a href="index.html"><img src="[https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png](https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png)" alt="Logo Marhayu" class="h-10 mb-8"></a>
             <nav class="space-y-1 text-lg sidebar-nav">
                 <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors font-bold text-black"><i class="bi bi-house-door-fill text-2xl"></i><span>Beranda</span></a>
                 <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 transition-colors"><i class="bi bi-search text-2xl"></i><span>Pencarian</span></a>
@@ -154,11 +170,12 @@
 
         <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 h-full overflow-y-auto">
             <header class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200">
-                <h1 class="text-xl font-bold md:hidden text-center py-3"><img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-8 mx-auto"></h1>
+                <h1 class="text-xl font-bold md:hidden text-center py-3"><img src="[https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png](https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png)" alt="Logo Marhayu" class="h-8 mx-auto"></h1>
                 <div id="header-content" class="hidden md:block">
-                     <div id="tab-container" class="flex">
-                        <button id="for-you-tab" class="flex-1 text-center py-3 font-semibold border-b-2 border-black transition-colors">For You</button>
-                        <button id="following-tab" class="flex-1 text-center py-3 font-semibold text-gray-500 border-b-2 border-transparent transition-colors">Following</button>
+                     <div id="tab-container" class="flex relative">
+                        <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black transition-colors">For You</button>
+                        <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 transition-colors">Following</button>
+                        <div id="tab-indicator"></div>
                     </div>
                     <h1 id="hashtag-header-title" class="text-xl font-bold px-4 py-3 hidden"></h1>
                 </div>
@@ -459,16 +476,28 @@
         }
         
         function updateTabUI() {
+            const indicator = document.getElementById('tab-indicator');
+            const forYouBtn = forYouTab;
+            const followingBtn = followingTab;
+
+            if (!indicator || !forYouBtn || !followingBtn) return;
+
             if (activeTab === 'for-you') {
-                forYouTab.classList.add('border-black', 'text-black');
-                forYouTab.classList.remove('text-gray-500', 'border-transparent');
-                followingTab.classList.add('text-gray-500', 'border-transparent');
-                followingTab.classList.remove('border-black', 'text-black');
+                forYouBtn.classList.add('text-black');
+                forYouBtn.classList.remove('text-gray-500');
+                followingBtn.classList.add('text-gray-500');
+                followingBtn.classList.remove('text-black');
+                
+                indicator.style.left = `${forYouBtn.offsetLeft}px`;
+                indicator.style.width = `${forYouBtn.offsetWidth}px`;
             } else {
-                followingTab.classList.add('border-black', 'text-black');
-                followingTab.classList.remove('text-gray-500', 'border-transparent');
-                forYouTab.classList.add('text-gray-500', 'border-transparent');
-                forYouTab.classList.remove('border-black', 'text-black');
+                followingBtn.classList.add('text-black');
+                followingBtn.classList.remove('text-gray-500');
+                forYouBtn.classList.add('text-gray-500');
+                forYouBtn.classList.remove('text-black');
+
+                indicator.style.left = `${followingBtn.offsetLeft}px`;
+                indicator.style.width = `${followingBtn.offsetWidth}px`;
             }
         }
 
@@ -502,6 +531,7 @@
             }
 
             await fetchPosts();
+            updateTabUI(); // Set initial position of tab indicator
             setupModalListeners();
             subscribeToChanges();
             subscribeToNotifications();
@@ -708,7 +738,8 @@
             if (post.last_copied_at) {
                  const copiedDate = new Date(post.last_copied_at);
                  const createdDate = new Date(post.created_at);
-                 if (Date.now() - copiedDate.getTime() < 24 * 60 * 60 * 1000 && Math.abs(copiedDate.getTime() - createdDate.getTime()) > 1000) {
+                 // BUG FIX: Show label for only 5 minutes to avoid it appearing "suddenly" long after the share.
+                 if (Date.now() - copiedDate.getTime() < 5 * 60 * 1000 && Math.abs(copiedDate.getTime() - createdDate.getTime()) > 1000) {
                     copiedLabelHtml = `<div class="copied-post-label"><i class="bi bi-link-45deg"></i> Baru saja dibagikan</div>`;
                  }
             }
@@ -1376,6 +1407,7 @@
                 if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
                 db = createClient(config.supabaseUrl, config.supabaseAnonKey);
                 initialize();
+                window.addEventListener('resize', updateTabUI); // Add resize listener for indicator
             } catch (error) {
                 console.error("Initialization Error:", error);
                 document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
