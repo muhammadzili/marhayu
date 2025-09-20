@@ -1,5 +1,4 @@
 {
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/s/config",
@@ -12,6 +11,8 @@
       "destination": "/",
       "permanent": false
     }
-  ]
+  ],
+  "trailingSlash": false,
+  "cleanUrls": true
 }
 
