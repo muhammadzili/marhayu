@@ -1,9 +1,8 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/api/internal/get-db-config",
+      "source": "/s/config",
       "destination": "/api/db.js"
     }
   ],
