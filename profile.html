@@ -178,7 +178,7 @@
                 <div id="profile-banner" class="h-48 bg-gray-300 dark:bg-slate-700 bg-cover bg-center"></div>
                 <div class="p-4">
                     <div class="flex justify-between items-start">
-                        <img src="https://placehold.co/128x128/e5e7eb/e5e7eb?text= " id="profile-avatar" class="w-32 h-32 rounded-3xl -mt-20 border-4 border-white dark:border-slate-900 bg-gray-300 dark:bg-slate-700 object-cover">
+                        <img src="https://placehold.co/128x128/e5e7eb/e5e7eb?text= " id="profile-avatar" class="w-32 h-32 rounded-full -mt-20 border-4 border-white dark:border-slate-900 bg-gray-300 dark:bg-slate-700 object-cover">
                         <div id="profile-action-button-container"></div>
                     </div>
                     <div class="mt-2">
@@ -248,7 +248,7 @@
                     </div>
 
                     <div class="relative w-28 h-28 rounded-3xl -mt-16 ml-4 border-4 border-white dark:border-slate-800 bg-gray-200 dark:bg-slate-700">
-                        <img id="avatar-preview" src="" class="w-full h-full object-cover rounded-3xl hidden" alt="Pratinjau Avatar">
+                        <img id="avatar-preview" src="" class="w-full h-full object-cover rounded-full hidden" alt="Pratinjau Avatar">
                          <div class="absolute inset-0 flex items-center justify-center">
                             <label for="avatar-upload" class="bg-black/50 text-white rounded-full w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-black/70 transition-colors">
                                 <i class="bi bi-camera-fill text-lg"></i>
@@ -910,7 +910,7 @@
                 const hasVotedThis = userVote && userVote.option_text === optionText;
                 optionEl.classList.toggle('voted-by-user', hasVotedThis);
 
-                const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
+                const percent = totalVotes > 0 ? Math.round((optionData.votes / totalVotes) * 100) : 0;
                 const progressBar = optionEl.querySelector('.poll-option-bar');
                 let percentTextEl = optionEl.querySelector('.poll-option-percent');
                 const textContainer = optionEl.querySelector('.poll-option-text-container');
