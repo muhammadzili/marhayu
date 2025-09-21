@@ -746,8 +746,6 @@
             }
             currentUser = session.user;
 
-            // Perbaikan Keamanan: Sebaiknya gunakan role-based access control (misal: Supabase RLS)
-            // daripada hardcoding ID pengguna.
             if(currentUser.id === '6ebc1ca0-b22d-4cba-9049-76051742da2f') {
                 promoteButton.classList.remove('hidden');
             }
@@ -816,7 +814,7 @@
             if (hashtagFromUrl) {
                 tabContainer.classList.add('hidden');
                 hashtagHeader.classList.remove('hidden');
-                // Perbaikan Keamanan: Hashtag yang ditampilkan di header sudah melalui proses escape di bawah ini
+                // FIX: Menangani potensi XSS pada hashtag di URL. textContent lebih aman dari innerHTML.
                 hashtagHeader.textContent = `#${escapeHTML(hashtagFromUrl)}`;
             } else {
                 tabContainer.classList.remove('hidden');
@@ -830,7 +828,6 @@
             query = query.range(from, to);
 
             if (hashtagFromUrl) {
-                // Catatan Keamanan: Supabase akan memproses nilai ini dengan aman, tapi pastikan tidak ada injeksi.
                 query = query.contains('hashtags', `{${hashtagFromUrl.toLowerCase()}}`).order('created_at', { ascending: false });
             } else if (activeTab === 'following') {
                 const usersToFetch = [...followingIds, currentUser.id];
@@ -1013,15 +1010,14 @@
             const likeCount = (post.likes || []).length;
             const commentCount = post.comments && post.comments[0] ? post.comments[0].count : 0;
             
-            // FIX: Menggunakan kelas rounded-full untuk profil yang bulat penuh
             const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             
-            // PERUBAHAN DI SINI: Escape konten HTML sebelum diproses lebih lanjut
             const escapedContent = escapeHTML(post.content);
+            // FIX: Mengamankan tautan profil dan hashtag agar tidak bisa diserang XSS
             const processedContent = escapedContent.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
-                if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
-                if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
-                return match; // Kembalikan match jika tidak ada yang cocok
+                if (mention) return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+                if (hashtag) return `<a href="index.html?hashtag=${encodeURIComponent(hashtag.toLowerCase())}" class="text-blue-500 hover:underline">#${escapeHTML(hashtag)}</a>`;
+                return match; 
             });
 
             let copiedLabelHtml = '';
@@ -1042,7 +1038,7 @@
                     const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
                     const hasVotedThis = userVote && userVote.option_text === option.option;
                     const showResults = !!userVote;
-                    return `<div class="poll-option-display ${hasVotedThis ? 'voted-by-user' : ''}" data-option="${option.option}" data-post-id="${post.id}">
+                    return `<div class="poll-option-display ${hasVotedThis ? 'voted-by-user' : ''}" data-option="${escapeHTML(option.option)}" data-post-id="${post.id}">
                                 <div class="poll-option-bar" style="width: ${showResults ? percent : 0}%;"></div>
                                 <div class="poll-option-text-container">
                                     <span>${escapeHTML(option.option)}</span>
@@ -1060,9 +1056,9 @@
                 postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
             } else {
                 let mediaHtml = '';
-                if (post.image_url) mediaHtml = `<img src="${post.image_url}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
+                if (post.image_url) mediaHtml = `<img src="${escapeHTML(post.image_url)}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
                 else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}">
-                                    <video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
+                                    <video src="${escapeHTML(post.video_url)}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
                                     <div class="video-controls-overlay"> <button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button> <button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button> </div>
                                     <div class="video-progress-bar"><div class="video-progress-filled"></div></div>
                                 </div>`;
@@ -1070,7 +1066,8 @@
             }
 
             if (post.is_promotion && post.promotion_link) {
-                postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Learn More'}</a></div>`;
+                const safeLink = post.promotion_link.startsWith('http') ? post.promotion_link : '#';
+                postContentHtml += `<div class="mt-3"><a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Learn More'}</a></div>`;
             }
 
             const reactions = post.reactions || [];
@@ -1080,7 +1077,7 @@
             }, {});
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
-            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             
             const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Sponsored by ${escapeHTML(profile.full_name)}</p>` : '';
             
@@ -1091,7 +1088,7 @@
                         <div>
                             <a href="profile.html?user_id=${profile.id}" class="hover:underline">
                                 <p class="font-bold flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
-                                <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${profile.username}</span></p>
+                                <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${escapeHTML(profile.username)}</span></p>
                             </a>
                             <p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
                         </div>
@@ -1129,7 +1126,7 @@
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
             const summaryContainer = postElement.querySelector('.reaction-summary');
-            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             const reactionButton = postElement.querySelector('.reactions-container button');
             if (reactionButton) reactionButton.classList.toggle('text-yellow-500', !!userReaction);
         }
@@ -1147,7 +1144,7 @@
                 const hasVotedThis = userVote && userVote.option_text === optionText;
                 optionEl.classList.toggle('voted-by-user', hasVotedThis);
 
-                const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
                 const progressBar = optionEl.querySelector('.poll-option-bar');
                 let percentTextEl = optionEl.querySelector('.poll-option-percent');
                 const textContainer = optionEl.querySelector('.poll-option-text-container');
@@ -1186,7 +1183,6 @@
             const div = document.createElement('div');
             div.className = `flex space-x-3 mt-4 comment-container ${comment.is_pinned ? 'comment-pinned' : ''}`;
             div.id = `comment-${comment.id}`;
-            // FIX: Menggunakan kelas rounded-full untuk avatar di komentar
             const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             const liked_by = comment.liked_by || [];
             const userHasLiked = liked_by.includes(currentUser.id);
@@ -1194,15 +1190,17 @@
             const isPostOwner = currentUser.id === postOwnerId;
             const isCommentOwner = currentUser.id === comment.user_id;
             let replyToMentionSpan = '';
-            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
+            // FIX: Menggunakan encodeURIComponent untuk URL dan escapeHTML untuk teks yang ditampilkan.
+            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${encodeURIComponent(comment.reply_to_username)}" class="text-blue-500 hover:underline mr-1">@${escapeHTML(comment.reply_to_username)}</a>`;
             
-            // PERUBAHAN DI SINI: Escape konten komentar juga
             const escapedContent = escapeHTML(comment.content);
-            const processedContent = escapedContent.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
+            const processedContent = escapedContent.replace(/@(\w+)/g, (match, mention) => {
+                 return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+            });
             
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${escapeHTML(profile.username)}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
             return div;
         }
 
@@ -1262,10 +1260,10 @@
                         mentionStartIndex = atIndex; 
                         const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
                         if (users && users.length > 0) { 
+                            // FIX: Sanitize data dari database sebelum dimasukkan ke innerHTML
                             popupElement.innerHTML = users.map(user => {
-                                // FIX: Menggunakan kelas rounded-full untuk avatar di popup mention
                                 const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name);
-                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold">${user.full_name || 'User'}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`
+                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${escapeHTML(user.username)}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold">${escapeHTML(user.full_name || 'User')}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${escapeHTML(user.username)}</p></div></div>`
                             }).join(''); 
                             popupElement.classList.remove('hidden'); 
                         } else { 
@@ -1318,8 +1316,6 @@
         function handleMediaUpload(event, mediaType) {
             const file = event.target.files[0];
             if (!file) return;
-            // Catatan Keamanan: Validasi jenis file dan ukuran file harus dilakukan di sini
-            // dan di sisi server untuk mencegah serangan DoS.
             resetComposerStyle();
             isPollMode = false; pollCreatorContainer.classList.add('hidden'); pollButton.classList.remove('text-orange-500');
             postImageFile = mediaType === 'image' ? file : null;
@@ -1347,7 +1343,7 @@
         videoUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'video'));
         
         submitPostButton.addEventListener('click', async () => {
-            const content = postContentInput.value; // No trim to keep spaces
+            const content = postContentInput.value; 
             if (submitPostButton.disabled) return;
             
             submitPostButton.disabled = true;
@@ -1375,7 +1371,7 @@
                     hashtags: hashtags
                 };
                 
-            } else { // Handle regular, media, or full-text post
+            } else { 
                 let imageUrl = null, videoUrl = null;
                 const fileToUpload = postImageFile || postVideoFile;
                 if (fileToUpload && !isFullTextMode) {
@@ -1399,7 +1395,6 @@
                     const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: isPollMode ? 'mention_post' : 'mention_post', post_id: newPost.id }));
                     await db.from('notifications').insert(notifications);
                 }
-                // Reset composer
                 postContentInput.value = '';
                 postImageFile = null; postVideoFile = null;
                 mediaPreviewContainer.innerHTML = '';
@@ -1411,7 +1406,7 @@
                     pollCreatorContainer.classList.add('hidden');
                     pollButton.classList.remove('text-orange-500');
                 }
-                await fetchPosts(false); // Refresh timeline
+                await fetchPosts(false); 
             } else {
                 showToast('Gagal memposting.');
             }
@@ -1453,44 +1448,40 @@
                     post = JSON.parse(postElement.dataset.postObject);
                 } catch (err) {
                     pollOption.removeAttribute('data-processing');
-                    return; // Invalid post data
+                    return; 
                 }
                 
                 const postId = post.id;
                 const optionText = pollOption.dataset.option;
                 const userId = currentUser.id;
 
-                // --- Optimistic Update Logic ---
                 let pollVotes = post.poll_votes || [];
                 let pollOptions = post.poll_options || [];
                 const existingVoteIndex = pollVotes.findIndex(v => v.user_id === userId);
                 const oldOptionText = existingVoteIndex !== -1 ? pollVotes[existingVoteIndex].option_text : null;
 
-                // Update local vote counts optimistically
                 if (oldOptionText) {
                     const oldOption = pollOptions.find(o => o.option === oldOptionText);
                     if (oldOption) oldOption.votes = Math.max(0, oldOption.votes - 1);
                 }
                 
-                if (oldOptionText === optionText) { // Case 1: Un-voting
+                if (oldOptionText === optionText) { 
                     pollVotes.splice(existingVoteIndex, 1);
-                } else { // Case 2: New vote or changing vote
+                } else { 
                     const newOption = pollOptions.find(o => o.option === optionText);
                     if (newOption) newOption.votes++;
                     
-                    if (existingVoteIndex !== -1) { // Changing vote
+                    if (existingVoteIndex !== -1) { 
                         pollVotes[existingVoteIndex].option_text = optionText;
-                    } else { // New vote
+                    } else { 
                         pollVotes.push({ user_id: userId, option_text: optionText, post_id: postId });
                     }
                 }
                 
-                // Update post object and re-save to data attribute
                 post.poll_votes = pollVotes;
                 post.poll_options = pollOptions;
                 postElement.dataset.postObject = JSON.stringify(post);
                 
-                // --- Call UI Update with new local data for instant feedback ---
                 updatePollUI(postId, pollOptions, pollVotes);
                 const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
                 if (modalPostElement) {
@@ -1498,24 +1489,21 @@
                    updatePollUI(postId, pollOptions, pollVotes, modalContent);
                 }
 
-                // --- Database update in the background ---
                 (async () => {
                     try {
                         if (oldOptionText) {
-                             if (oldOptionText === optionText) { // un-vote
+                             if (oldOptionText === optionText) { 
                                 await db.from('poll_votes').delete().match({ post_id: postId, user_id: userId });
-                             } else { // change vote
+                             } else { 
                                 await db.from('poll_votes').update({ option_text: optionText }).match({ post_id: postId, user_id: userId });
                              }
-                        } else { // new vote
+                        } else { 
                              await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText });
                         }
-                        // Reconcile final counts on the main post table
                         await updatePostPollData(postId);
                     } catch (error) {
                         console.error("Poll vote DB error:", error);
                         showToast("Gagal menyimpan suara. Mengembalikan perubahan.");
-                        // Revert UI on error by fetching fresh data
                         const { data: refreshedPost } = await db.from('posts').select(`*, poll_votes(user_id, option_text)`).eq('id', postId).single();
                         if (refreshedPost) {
                            postElement.dataset.postObject = JSON.stringify(refreshedPost);
@@ -1531,13 +1519,11 @@
                 })();
             }
 
-
             const copyLinkButton = e.target.closest('.copy-link-button');
             if(copyLinkButton) {
                 const postId = copyLinkButton.dataset.postId;
                 const postUrl = `${window.location.origin}${window.location.pathname}?post_id=${postId}`;
                 try {
-                    // FIX: Menggunakan document.execCommand untuk kompatibilitas yang lebih baik di lingkungan iframe.
                     const tempInput = document.createElement('textarea');
                     tempInput.value = postUrl;
                     document.body.appendChild(tempInput);
@@ -1673,8 +1659,7 @@
         pollButton.addEventListener('click', () => {
             isPollMode = !isPollMode;
             if (isPollMode) {
-                // Entering poll mode
-                resetComposerStyle(); // Ensure not in full text mode
+                resetComposerStyle(); 
                 postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = ''; imageUploadInput.value = ''; videoUploadInput.value = '';
                 pollCreatorContainer.classList.remove('hidden');
                 pollButton.classList.add('text-orange-500');
@@ -1683,7 +1668,6 @@
                     addPollOptionCreatorInput();
                 }
             } else {
-                // Exiting poll mode
                 pollCreatorContainer.classList.add('hidden');
                 pollButton.classList.remove('text-orange-500');
                 pollOptionsCreator.innerHTML = '';
@@ -1813,7 +1797,6 @@
                 showToast('Gagal mempromosikan postingan.');
             } else {
                 showToast('Postingan berhasil dipromosikan!');
-                // Reset form and close modal
                 promoteContentInput.value = '';
                 promoteLinkInput.value = '';
                 promoteButtonTextInput.value = '';
@@ -1840,7 +1823,8 @@
                 let current = repliedToComment;
                 while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); }
                 activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername };
-                replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`;
+                // FIX: escapeHTML pada username yang ditampilkan di banner.
+                replyingToBanner.innerHTML = `Membalas <strong>@${escapeHTML(activeReplyTo.replyToUsernameForDisplay)}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`;
                 replyingToBanner.classList.remove('hidden');
                 commentInput.focus();
                 document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); };
@@ -1980,7 +1964,7 @@
                 if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
                 db = createClient(config.supabaseUrl, config.supabaseAnonKey);
                 initialize();
-                window.addEventListener('resize', updateTabUI); // Add resize listener for indicator
+                window.addEventListener('resize', updateTabUI); 
             } catch (error) {
                 console.error("Initialization Error:", error);
                 document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-slate-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
