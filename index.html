@@ -219,6 +219,19 @@
         #loading-indicator.visible {
             display: block;
         }
+
+        /* Character counter styles */
+        #char-counter {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .dark #char-counter {
+            color: #94a3b8;
+        }
+        #char-counter.limit-exceeded {
+            color: #ef4444;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
@@ -254,7 +267,7 @@
             </header>
 
             <div class="p-4 border-b border-gray-200 dark:border-slate-700 relative">
-                <textarea id="post-content" class="w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-slate-100 dark:placeholder-slate-500" rows="3" placeholder="Apa yang sedang terjadi?"></textarea>
+                <textarea id="post-content" class="w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-slate-100 dark:placeholder-slate-500" rows="3" placeholder="Apa yang sedang terjadi?" maxlength="300"></textarea>
                 <div id="post-mention-popup" class="mention-popup hidden dark:bg-slate-800 dark:border-slate-600"></div>
                 <div id="media-preview-container" class="mt-2"></div>
                 
@@ -282,6 +295,7 @@
                         <button id="promote-button" class="cursor-pointer hover:text-yellow-500 hidden"><i class="bi bi-megaphone-fill"></i></button>
                     </div>
                      <div class="flex items-center">
+                        <span id="char-counter" class="mr-4">300</span>
                         <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-slate-700 rounded-full text-sm p-2.5 mr-4">
                             <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
                             <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 11a1 1 0 100 2h1a1 1 0 100-2H3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
@@ -315,8 +329,7 @@
             <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
                 <i class="bi bi-person text-2xl"></i>
             </a>
-        </div>
-    </nav>
+        </nav>
 
     <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/70 items-center justify-center hidden z-50">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-slate-700 overflow-hidden flex flex-col max-h-[90vh] modal-box">
@@ -525,10 +538,18 @@
         const loadingIndicator = document.getElementById('loading-indicator');
         const mainScrollContainer = document.querySelector('main');
 
+        // Character Counter
+        const charCounter = document.getElementById('char-counter');
+
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions
             .map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`)
             .join('');
+        
+        function getAvatarFallback(name) {
+            const initial = name ? name.trim().charAt(0).toUpperCase() : '?';
+            return `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${initial}&font=inter`;
+        }
 
         function createSkeletonPostElement() {
             const div = document.createElement('div');
@@ -972,8 +993,7 @@
             const userHasLiked = (post.likes || []).some(like => like.user_id === currentUser.id);
             const likeCount = (post.likes || []).length;
             const commentCount = post.comments && post.comments[0] ? post.comments[0].count : 0;
-            const userInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-            const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             
             const processedContent = post.content.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
                 if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
@@ -1142,8 +1162,7 @@
             const div = document.createElement('div');
             div.className = `flex space-x-3 mt-4 comment-container ${comment.is_pinned ? 'comment-pinned' : ''}`;
             div.id = `comment-${comment.id}`;
-            const userInitial = profile.full_name.charAt(0).toUpperCase();
-            const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/40x40/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             const liked_by = comment.liked_by || [];
             const userHasLiked = liked_by.includes(currentUser.id);
             const likeCount = liked_by.length;
@@ -1205,8 +1224,42 @@
 
         function setupMentionHandler(inputElement, popupElement) {
             let mentionStartIndex = -1;
-            inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart, atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`).join(''); popupElement.classList.remove('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); });
-            popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } });
+            inputElement.addEventListener('input', async (e) => { 
+                const text = e.target.value, cursorPos = e.target.selectionStart; 
+                const atIndex = text.lastIndexOf('@', cursorPos - 1); 
+                if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { 
+                    const query = text.substring(atIndex + 1, cursorPos); 
+                    if (!/\s/.test(query)) { 
+                        mentionStartIndex = atIndex; 
+                        const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
+                        if (users && users.length > 0) { 
+                            popupElement.innerHTML = users.map(user => {
+                                const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name);
+                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${avatarUrl}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${user.full_name || 'User'}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`
+                            }).join(''); 
+                            popupElement.classList.remove('hidden'); 
+                        } else { 
+                            popupElement.classList.add('hidden'); 
+                        } 
+                    } else { 
+                        popupElement.classList.add('hidden'); 
+                    } 
+                } else { 
+                    popupElement.classList.add('hidden'); 
+                } 
+            }); 
+            popupElement.addEventListener('click', (e) => { 
+                const item = e.target.closest('.mention-item'); 
+                if (item) { 
+                    const username = item.dataset.username; 
+                    const currentText = inputElement.value; 
+                    const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); 
+                    inputElement.value = newText; 
+                    popupElement.classList.add('hidden'); 
+                    inputElement.focus(); 
+                    validatePostButton();
+                } 
+            });
         }
         
         setupMentionHandler(postContentInput, document.getElementById('post-mention-popup'));
@@ -1214,6 +1267,11 @@
         
         function validatePostButton() {
             const content = postContentInput.value.trim();
+            const charLength = postContentInput.value.length;
+            const maxChars = 300;
+            charCounter.textContent = maxChars - charLength;
+            charCounter.classList.toggle('limit-exceeded', charLength > maxChars);
+
             if (isPollMode) {
                 const question = pollQuestionInput.value.trim();
                 const options = Array.from(pollOptionsCreator.querySelectorAll('input')).map(input => input.value.trim());
@@ -1221,7 +1279,7 @@
                 const isValid = question !== '' && options.length >= 2 && !hasEmptyOption;
                 submitPostButton.disabled = !isValid;
             } else {
-                 submitPostButton.disabled = !content && !postImageFile && !postVideoFile;
+                 submitPostButton.disabled = (!content && !postImageFile && !postVideoFile) || charLength > maxChars;
             }
         }
         
@@ -1257,7 +1315,7 @@
         videoUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'video'));
         
         submitPostButton.addEventListener('click', async () => {
-            const content = postContentInput.value.trim();
+            const content = postContentInput.value; // No trim to keep spaces
             if (submitPostButton.disabled) return;
             
             submitPostButton.disabled = true;
@@ -1278,7 +1336,7 @@
                 const pollOptionsData = options.map(opt => ({ option: opt, votes: 0 }));
                 postData = {
                     user_id: currentUser.id,
-                    content: content,
+                    content: content.trim(),
                     is_poll: true,
                     poll_question: question,
                     poll_options: pollOptionsData,
@@ -1321,7 +1379,7 @@
                     pollCreatorContainer.classList.add('hidden');
                     pollButton.classList.remove('text-orange-500');
                 }
-                await fetchPosts();
+                await fetchPosts(false); // Refresh timeline
             } else {
                 showToast('Gagal memposting.');
             }
