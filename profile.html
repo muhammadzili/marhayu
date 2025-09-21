@@ -144,6 +144,37 @@
             border-radius: 6px;
             border: 3px solid #0f172a; /* slate-900 */
         }
+
+        /* New Label Styles */
+        .founder-label, .security-label, .one-label {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            margin-left: 0.5rem;
+            animation: pulse-glow 2s infinite;
+            text-transform: uppercase;
+        }
+        .founder-label {
+            background-color: #fcd34d; /* Yellow-400 */
+            color: #92400e; /* Yellow-900 */
+            box-shadow: 0 0 5px #fcd34d;
+        }
+        .security-label {
+            background-color: #ef4444; /* Red-500 */
+            color: white;
+            box-shadow: 0 0 5px #ef4444;
+        }
+        .one-label {
+            background-color: #8b5cf6; /* Violet-500 */
+            color: white;
+            box-shadow: 0 0 5px #8b5cf6;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1); }
+        }
     </style>
 </head>
 <body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
@@ -531,21 +562,43 @@
         }
 
         async function fetchProfileData(userId) {
-            const { data: profile, error } = await db.from('profiles').select('*').eq('id', userId).single();
+            const { data: profile, error } = await db.from('profiles').select('*, posts(count)').eq('id', userId).single();
             if (error || !profile) { console.error('Error fetching profile:', error); timeline.innerHTML = '<p class="p-4 text-center text-red-500">Gagal memuat profil.</p>'; return; }
             viewedProfile = profile;
             
             const fullNameElement = document.getElementById('profile-fullname');
             
-            // Sanitize and set name as plain text to prevent XSS
             fullNameElement.innerHTML = ''; // Clear previous content
-            fullNameElement.textContent = profile.full_name; 
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = profile.full_name;
+            fullNameElement.appendChild(nameSpan);
+            
             if (profile.is_verified) {
                 const badge = document.createElement('span');
-                badge.className = 'ml-2 text-blue-500';
+                badge.className = 'ml-1 text-blue-500';
                 badge.innerHTML = '<i class="bi bi-patch-check-fill"></i>';
                 fullNameElement.appendChild(badge);
             }
+             if (profile.is_founder) {
+                const label = document.createElement('span');
+                label.className = 'founder-label';
+                label.textContent = 'Founder';
+                fullNameElement.appendChild(label);
+            }
+            if (profile.is_security) {
+                const label = document.createElement('span');
+                label.className = 'security-label';
+                label.textContent = 'Security';
+                fullNameElement.appendChild(label);
+            }
+            if (profile.is_one) {
+                const label = document.createElement('span');
+                label.className = 'one-label';
+                label.textContent = 'ONE';
+                fullNameElement.appendChild(label);
+            }
+
             document.getElementById('profile-header-name').textContent = profile.full_name;
             
             document.getElementById('profile-avatar').src = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
@@ -581,7 +634,7 @@
 
             for (let i = 0; i < 3; i++) timeline.appendChild(createSkeletonPostElement());
 
-            const { data: posts, error, count } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`, { count: 'exact' }).eq('user_id', userId).order('created_at', { ascending: false });
+            const { data: posts, error, count } = await db.from('posts').select(`*, profiles(is_founder, is_security, is_one, is_verified, full_name, username, profile_avatar_url), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`, { count: 'exact' }).eq('user_id', userId).order('created_at', { ascending: false });
             
             timeline.innerHTML = '';
             if (error) { console.error('Error fetching user posts:', error.message || error); return; }
@@ -846,13 +899,19 @@
             
             const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Sponsored by ${escapeHTML(profile.full_name)}</p>` : '';
             
+            let labelsHtml = '';
+            if (profile.is_verified) labelsHtml += `<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>`;
+            if (profile.is_founder) labelsHtml += `<span class="founder-label">Founder</span>`;
+            if (profile.is_security) labelsHtml += `<span class="security-label">Security</span>`;
+            if (profile.is_one) labelsHtml += `<span class="one-label">ONE</span>`;
+
             div.innerHTML = `
                 <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 object-cover flex-shrink-0" loading="lazy"></a></div>
                 <div class="w-full">
                     <div class="flex justify-between items-start">
                         <div>
                             <a href="profile.html?user_id=${profile.id}" class="hover:underline">
-                                <p class="font-bold flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
+                                <p class="font-bold flex items-center">${escapeHTML(profile.full_name)}${labelsHtml}
                                 <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${escapeHTML(profile.username)}</span></p>
                             </a>
                             <p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
@@ -965,7 +1024,14 @@
             
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${escapeHTML(profile.username)}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+
+            let labelsHtml = '';
+            if (profile.is_verified) labelsHtml += `<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>`;
+            if (profile.is_founder) labelsHtml += `<span class="founder-label">Founder</span>`;
+            if (profile.is_security) labelsHtml += `<span class="security-label">Security</span>`;
+            if (profile.is_one) labelsHtml += `<span class="one-label">ONE</span>`;
+
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)}${labelsHtml}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${escapeHTML(profile.username)}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
             return div;
         }
 
@@ -975,7 +1041,7 @@
             commentModal.classList.remove('hidden');
             commentModal.classList.add('flex');
             setTimeout(() => commentModal.classList.add('is-visible'), 10);
-            const { data: post, error: postError } = await db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).eq('id', postId).single();
+            const { data: post, error: postError } = await db.from('posts').select(`*, profiles(is_founder, is_security, is_one, is_verified, full_name, username, profile_avatar_url), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).eq('id', postId).single();
             if (postError) { modalContent.innerHTML = '<p>Gagal memuat postingan.</p>'; return; }
             activePostForComment = post;
             const { data: comments, error: commentsError } = await db.from('comments').select(`*`).eq('post_id', postId);
@@ -983,7 +1049,7 @@
             commentsById.clear();
             comments.forEach(c => commentsById.set(c.id, c));
             const userIds = [...new Set(comments.map(c => c.user_id))];
-            const { data: profiles, error: profilesError } = await db.from('profiles').select('*').in('id', userIds);
+            const { data: profiles, error: profilesError } = await db.from('profiles').select('*, is_founder, is_security, is_one').in('id', userIds);
             if (profilesError) { modalContent.innerHTML = '<p>Gagal memuat profil.</p>'; return; }
             const profilesMap = new Map(profiles.map(p => [p.id, p]));
             const rootComments = [];
@@ -1023,11 +1089,11 @@
                     const query = text.substring(atIndex + 1, cursorPos); 
                     if (!/\s/.test(query)) { 
                         mentionStartIndex = atIndex; 
-                        const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
+                        const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url, is_verified, is_founder, is_security, is_one').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
                         if (users && users.length > 0) { 
                             popupElement.innerHTML = users.map(user => { 
                                 const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name); 
-                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${escapeHTML(user.username)}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold">${escapeHTML(user.full_name || 'User')}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${escapeHTML(user.username)}</p></div></div>`
+                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${escapeHTML(user.username)}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold flex items-center">${escapeHTML(user.full_name || 'User')}${user.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}${user.is_founder ? '<span class="founder-label">Founder</span>' : ''}${user.is_security ? '<span class="security-label">Security</span>' : ''}${user.is_one ? '<span class="one-label">ONE</span>' : ''}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${escapeHTML(user.username)}</p></div></div>`
                             }).join(''); 
                             popupElement.classList.remove('hidden'); 
                         } else { 
