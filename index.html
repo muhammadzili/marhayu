@@ -495,6 +495,10 @@
         const promoteMediaPreview = document.getElementById('promote-media-preview');
         const promoteLinkInput = document.getElementById('promote-link');
         const promoteButtonTextInput = document.getElementById('promote-button-text');
+        
+        // Bug Hunter Sheet Elements
+        const bugHunterSheet = document.getElementById('bug-hunter-sheet');
+        const closeBugSheetButton = document.getElementById('close-bug-sheet-button');
 
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions
@@ -706,6 +710,13 @@
             const urlParams = new URLSearchParams(window.location.search);
             const postIdFromUrl = urlParams.get('post_id');
             if (postIdFromUrl) openCommentModal(postIdFromUrl);
+
+            // Bug Hunter Sheet Logic
+            if (!localStorage.getItem('bugHunterSheetClosed')) {
+                setTimeout(() => {
+                    bugHunterSheet.classList.add('is-visible');
+                }, 2000); // Show after 2 seconds
+            }
         }
 
         async function fetchPosts() {
@@ -1134,73 +1145,148 @@
             inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart, atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`).join(''); popupElement.classList.remove('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); });
             popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } });
         }
-
+        
+        setupMentionHandler(postContentInput, document.getElementById('post-mention-popup'));
         setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
-
-        function openEditModal() { 
-            fullNameInput.value = viewedProfile.full_name; 
-            usernameInput.value = viewedProfile.username; 
-            bioInput.value = viewedProfile.bio || ''; 
-            privateAccountToggle.checked = viewedProfile.is_private; 
-            
-            const bannerPreview = document.getElementById('banner-preview');
-            if (viewedProfile.banner_url) {
-                bannerPreview.src = viewedProfile.banner_url;
-                bannerPreview.classList.remove('hidden');
+        
+        function validatePostButton() {
+            const content = postContentInput.value.trim();
+            if (isPollMode) {
+                const question = pollQuestionInput.value.trim();
+                const options = Array.from(pollOptionsCreator.querySelectorAll('input')).map(input => input.value.trim());
+                const hasEmptyOption = options.some(opt => opt === '');
+                const isValid = question !== '' && options.length >= 2 && !hasEmptyOption;
+                submitPostButton.disabled = !isValid;
             } else {
-                bannerPreview.src = '';
-                bannerPreview.classList.add('hidden');
+                 submitPostButton.disabled = !content && !postImageFile && !postVideoFile;
             }
-
-            const avatarPreview = document.getElementById('avatar-preview');
-            if (viewedProfile.profile_avatar_url) {
-                avatarPreview.src = viewedProfile.profile_avatar_url;
-                avatarPreview.classList.remove('hidden');
-            } else {
-                avatarPreview.src = '';
-                avatarPreview.classList.add('hidden');
-            }
-            
-            avatarUploadInput.value = ''; 
-            bannerUploadInput.value = ''; 
-            document.getElementById('save-profile-button').disabled = true;
-            editProfileModal.classList.remove('hidden'); 
-            editProfileModal.classList.add('flex'); 
-            setTimeout(() => editProfileModal.classList.add('is-visible'), 10); 
-        }
-
-        function closeEditModal() { 
-            editProfileModal.classList.remove('is-visible'); 
-            setTimeout(() => { 
-                editProfileModal.classList.add('hidden'); 
-                editProfileModal.classList.remove('flex'); 
-            }, 250); 
         }
         
-        editProfileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const saveButton = document.getElementById('save-profile-button');
-            saveButton.disabled = true; saveButton.textContent = 'Menyimpan...';
-            const newFullName = fullNameInput.value, newUsername = usernameInput.value, newBio = bioInput.value, newIsPrivate = privateAccountToggle.checked, avatarFile = avatarUploadInput.files[0], bannerFile = bannerUploadInput.files[0];
-            let avatarUrl = viewedProfile.profile_avatar_url, bannerUrl = viewedProfile.banner_url;
-            try {
-                if (avatarFile) { const fileName = `${currentUser.id}/avatar-${Date.now()}`; await db.storage.from('media').upload(fileName, avatarFile, { upsert: true }); const { data } = db.storage.from('media').getPublicUrl(fileName); avatarUrl = data.publicUrl; }
-                if (bannerFile) { const fileName = `${currentUser.id}/banner-${Date.now()}`; await db.storage.from('media').upload(fileName, bannerFile, { upsert: true }); const { data } = db.storage.from('media').getPublicUrl(fileName); bannerUrl = data.publicUrl; }
-                const { error: updateError } = await db.from('profiles').update({ full_name: newFullName, username: newUsername, bio: newBio, profile_avatar_url: avatarUrl, banner_url: bannerUrl, is_private: newIsPrivate }).eq('id', currentUser.id);
-                if (updateError) throw updateError;
-                closeEditModal();
-                await fetchProfileData(currentUser.id);
-            } catch (error) { console.error('Error updating profile:', error.message || error); alert('Gagal memperbarui profil.'); } finally { saveButton.disabled = false; saveButton.textContent = 'Simpan Perubahan'; }
+        postContentInput.addEventListener('input', validatePostButton);
+        
+        function handleMediaUpload(event, mediaType) {
+            const file = event.target.files[0];
+            if (!file) return;
+            resetComposerStyle();
+            isPollMode = false; pollCreatorContainer.classList.add('hidden'); pollButton.classList.remove('text-orange-500');
+            postImageFile = mediaType === 'image' ? file : null;
+            postVideoFile = mediaType === 'video' ? file : null;
+            imageUploadInput.value = ''; videoUploadInput.value = '';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let previewHtml = '';
+                if (mediaType === 'image') {
+                    previewHtml = `<div class="preview-container"><img src="${e.target.result}" class="rounded-2xl max-h-80"><button class="remove-media-btn">&times;</button></div>`;
+                } else {
+                    previewHtml = `<div class="preview-container"><video src="${e.target.result}" class="rounded-2xl max-h-80" muted loop autoplay></video><button class="remove-media-btn">&times;</button></div>`;
+                }
+                mediaPreviewContainer.innerHTML = previewHtml;
+                mediaPreviewContainer.querySelector('.remove-media-btn').onclick = () => {
+                    postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = '';
+                    validatePostButton();
+                };
+            };
+            reader.readAsDataURL(file);
+            validatePostButton();
+        }
+
+        imageUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'image'));
+        videoUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'video'));
+        
+        submitPostButton.addEventListener('click', async () => {
+            const content = postContentInput.value.trim();
+            if (submitPostButton.disabled) return;
+            
+            submitPostButton.disabled = true;
+            submitPostButton.textContent = 'Memposting...';
+
+            const { ids: mentionedUserIds } = await parseMentions(content);
+            const hashtags = content.match(/#(\w+)/g)?.map(h => h.substring(1).toLowerCase()) || [];
+            
+            let postData = {};
+            let error = null;
+
+            if (isPollMode) {
+                const question = pollQuestionInput.value.trim();
+                const options = Array.from(pollOptionsCreator.querySelectorAll('input'))
+                                .map(input => input.value.trim())
+                                .filter(opt => opt !== '');
+                
+                const pollOptionsData = options.map(opt => ({ option: opt, votes: 0 }));
+                postData = {
+                    user_id: currentUser.id,
+                    content: content,
+                    is_poll: true,
+                    poll_question: question,
+                    poll_options: pollOptionsData,
+                    hashtags: hashtags
+                };
+                
+            } else { // Handle regular, media, or full-text post
+                let imageUrl = null, videoUrl = null;
+                const fileToUpload = postImageFile || postVideoFile;
+                if (fileToUpload && !isFullTextMode) {
+                    const fileName = `${currentUser.id}/${Date.now()}`;
+                    const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload);
+                    if (uploadError) { 
+                        showToast('Gagal mengunggah media.');
+                        submitPostButton.disabled = false; submitPostButton.textContent = 'Posting'; return;
+                    }
+                    const { data: urlData } = db.storage.from('media').getPublicUrl(fileName);
+                    if (postImageFile) imageUrl = urlData.publicUrl;
+                    if (postVideoFile) videoUrl = urlData.publicUrl;
+                }
+                postData = { content, user_id: currentUser.id, image_url: imageUrl, video_url: videoUrl, is_full_text: isFullTextMode, bg_color: fullTextColor, font_family: fullTextFont, mentioned_users: mentionedUserIds, hashtags: hashtags };
+            }
+            
+            const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single();
+            
+            if (!insertError) {
+                 if (mentionedUserIds.length > 0) {
+                    const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: isPollMode ? 'mention_post' : 'mention_post', post_id: newPost.id }));
+                    await db.from('notifications').insert(notifications);
+                }
+                // Reset composer
+                postContentInput.value = '';
+                postImageFile = null; postVideoFile = null;
+                mediaPreviewContainer.innerHTML = '';
+                resetComposerStyle();
+                if (isPollMode) {
+                    isPollMode = false;
+                    pollQuestionInput.value = '';
+                    pollOptionsCreator.innerHTML = '';
+                    pollCreatorContainer.classList.add('hidden');
+                    pollButton.classList.remove('text-orange-500');
+                }
+                await fetchPosts();
+            } else {
+                showToast('Gagal memposting.');
+            }
+            
+            submitPostButton.textContent = 'Posting';
+            validatePostButton();
         });
 
-        document.body.addEventListener('click', async e => {
+        document.body.addEventListener('click', async (e) => {
             const player = e.target.closest('.custom-video-player');
-            if (player) { const video = player.querySelector('video'); if (e.target.closest('.volume-btn')) { video.muted = !video.muted; e.target.closest('.volume-btn').querySelector('i').className = video.muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill'; return; } if (e.target.closest('.video-progress-bar')) { const rect = e.target.closest('.video-progress-bar').getBoundingClientRect(); video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration; return; } if (video.paused) video.play(); else video.pause(); }
-            const reactionEmoji = e.target.closest('.reaction-emoji'); if (reactionEmoji) { const postId = globalReactionPopover.dataset.postId; if (!postId) return; const reactionType = reactionEmoji.dataset.reaction; db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType }).then(({error}) => { if (error) console.error("Error reaction:", error); else { updatePostReactionsUI(postId); if (commentModal.classList.contains('is-visible') && activePostForComment?.id == postId) updatePostReactionsUI(postId, modalContent); } }); globalReactionPopover.classList.remove('visible'); }
-            const likeButton = e.target.closest('.like-button:not(.like-comment-button)'); if (likeButton) { const postId = likeButton.dataset.postId; if(likeButton.disabled) return; likeButton.disabled = true; recentlyUpdatedPostLikes.add(postId); setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000); const wasLiked = likeButton.dataset.liked === 'true'; const likeCountSpan = likeButton.querySelector('.like-count'); const icon = likeButton.querySelector('i'); const currentCount = parseInt(likeCountSpan.textContent); likeButton.dataset.liked = !wasLiked; likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1; likeButton.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).then(({ error }) => { if (error) { console.error('Like error:', error); likeButton.dataset.liked = wasLiked; likeCountSpan.textContent = currentCount; likeButton.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedPostLikes.delete(postId); } }).finally(() => { likeButton.disabled = false; }); }
-            const commentButton = e.target.closest('.comment-button'); if (commentButton) openCommentModal(commentButton.dataset.postId);
-            const deleteButton = e.target.closest('.delete-post-button'); if (deleteButton) { showConfirmModal('Postingan ini akan dihapus permanen.', () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (error) console.error('Delete error:', error); else document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); }); }
-            const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', 'index.html')}?post_id=${postId}`; try { await navigator.clipboard.writeText(postUrl); showToast('Tautan disalin ke clipboard!'); const { error } = await db.rpc('repost_post', { post_id_to_repost: postId }); if(error) throw error; } catch(err) { console.error('Gagal menyalin:', err); showToast('Gagal menyalin tautan.'); } }
+            if (player) {
+                const video = player.querySelector('video');
+                const volumeBtn = e.target.closest('.volume-btn');
+                if (volumeBtn) {
+                    const volumeIcon = volumeBtn.querySelector('i');
+                    video.muted = !video.muted;
+                    volumeIcon.className = video.muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+                    return;
+                }
+                const progressBar = e.target.closest('.video-progress-bar');
+                if (progressBar) {
+                     const rect = progressBar.getBoundingClientRect();
+                     const clickX = e.clientX - rect.left;
+                     video.currentTime = (clickX / rect.width) * video.duration;
+                     return;
+                }
+                if (video.paused) video.play(); else video.pause();
+            }
             
             const pollOption = e.target.closest('.poll-option-display');
             if (pollOption) {
@@ -1291,20 +1377,370 @@
                     }
                 })();
             }
+
+
+            const copyLinkButton = e.target.closest('.copy-link-button');
+            if(copyLinkButton) {
+                const postId = copyLinkButton.dataset.postId;
+                const postUrl = `${window.location.origin}${window.location.pathname}?post_id=${postId}`;
+                try {
+                    await navigator.clipboard.writeText(postUrl);
+                    showToast('Tautan disalin ke clipboard!');
+                    await db.rpc('repost_post', { post_id_to_repost: postId });
+                    const postElement = document.getElementById(`post-${postId}`);
+                    if (postElement) { postElement.classList.add('post-enter-animation'); timeline.prepend(postElement); }
+                } catch(err) { showToast('Gagal menyalin tautan.'); }
+            }
+
+            const reactionEmoji = e.target.closest('.reaction-emoji');
+            if (reactionEmoji) {
+                const postId = globalReactionPopover.dataset.postId;
+                if (!postId) return;
+                const reactionType = reactionEmoji.dataset.reaction;
+                db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType })
+                  .then(({error}) => {
+                    if (!error) {
+                        updatePostReactionsUI(postId);
+                         if (commentModal.classList.contains('is-visible') && activePostForComment?.id == postId) {
+                           updatePostReactionsUI(postId, modalContent);
+                        }
+                    }
+                  });
+                globalReactionPopover.classList.remove('visible');
+            }
+            
+            const likeButton = e.target.closest('.like-button:not(.like-comment-button)');
+            if (likeButton) {
+                const postId = likeButton.dataset.postId;
+                if(likeButton.disabled) return;
+                likeButton.disabled = true;
+                recentlyUpdatedPostLikes.add(postId);
+                setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000);
+                const wasLiked = likeButton.dataset.liked === 'true';
+                const likeCountSpan = likeButton.querySelector('.like-count');
+                const icon = likeButton.querySelector('i');
+                const currentCount = parseInt(likeCountSpan.textContent);
+                likeButton.dataset.liked = !wasLiked;
+                likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1;
+                likeButton.classList.toggle('text-red-500', !wasLiked);
+                icon.classList.toggle('bi-heart-fill', !wasLiked);
+                icon.classList.toggle('bi-heart', wasLiked);
+                db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId })
+                    .then(({ error }) => { if (error) {
+                        likeButton.dataset.liked = wasLiked;
+                        likeCountSpan.textContent = currentCount;
+                        likeButton.classList.toggle('text-red-500', wasLiked);
+                        icon.classList.toggle('bi-heart-fill', wasLiked);
+                        icon.classList.toggle('bi-heart', !wasLiked);
+                        recentlyUpdatedPostLikes.delete(postId);
+                    }}).finally(() => { likeButton.disabled = false; });
+            }
+
+            const commentButton = e.target.closest('.comment-button');
+            if (commentButton) openCommentModal(commentButton.dataset.postId);
+            const deleteButton = e.target.closest('.delete-post-button');
+            if (deleteButton) {
+                showConfirmModal('Postingan ini akan dihapus secara permanen dan tidak dapat dikembalikan.',
+                    () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (!error) document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); });
+            }
         });
 
-        document.body.addEventListener('mouseover', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { clearTimeout(reactionPopoverTimeout); const rect = reactionContainer.getBoundingClientRect(); globalReactionPopover.dataset.postId = reactionContainer.dataset.postId; const popoverWidth = globalReactionPopover.offsetWidth; let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2); if (leftPos < 8) leftPos = 8; if (leftPos + popoverWidth > window.innerWidth - 8) leftPos = window.innerWidth - popoverWidth - 8; globalReactionPopover.style.left = `${leftPos}px`; globalReactionPopover.style.top = `${rect.top - 45}px`; globalReactionPopover.classList.add('visible'); } });
-        document.body.addEventListener('mouseout', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { reactionPopoverTimeout = setTimeout(() => { if (!globalReactionPopover.matches(':hover')) globalReactionPopover.classList.remove('visible'); }, 200); } });
+        document.body.addEventListener('mouseover', e => {
+            const reactionContainer = e.target.closest('.reactions-container');
+            if (reactionContainer) {
+                clearTimeout(reactionPopoverTimeout);
+                const rect = reactionContainer.getBoundingClientRect();
+                globalReactionPopover.dataset.postId = reactionContainer.dataset.postId;
+                const popoverWidth = globalReactionPopover.offsetWidth;
+                const windowWidth = window.innerWidth;
+                let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2);
+                const margin = 8;
+                if (leftPos < margin) leftPos = margin;
+                if (leftPos + popoverWidth > windowWidth - margin) leftPos = windowWidth - popoverWidth - margin;
+                globalReactionPopover.style.left = `${leftPos}px`;
+                globalReactionPopover.style.top = `${rect.top - 45}px`;
+                globalReactionPopover.classList.add('visible');
+            }
+        });
+
+        document.body.addEventListener('mouseout', e => {
+            const reactionContainer = e.target.closest('.reactions-container');
+             if (reactionContainer) {
+                reactionPopoverTimeout = setTimeout(() => { if (!globalReactionPopover.matches(':hover')) { globalReactionPopover.classList.remove('visible'); } }, 200);
+            }
+        });
+
         globalReactionPopover.addEventListener('mouseleave', () => { globalReactionPopover.classList.remove('visible'); });
 
-        timeline.addEventListener('timeupdate', e => { if (e.target.tagName === 'VIDEO') { const player = e.target.closest('.custom-video-player'); if (!player) return; player.querySelector('.video-progress-filled').style.width = `${(e.target.currentTime / e.target.duration) * 100}%`; } }, true);
+        timeline.addEventListener('timeupdate', e => {
+             if (e.target.tagName === 'VIDEO') {
+                const player = e.target.closest('.custom-video-player');
+                if (!player) return;
+                const progressFilled = player.querySelector('.video-progress-filled');
+                progressFilled.style.width = `${(e.target.currentTime / e.target.duration) * 100}%`;
+             }
+        }, true);
+        
+        fullTextStyleButton.addEventListener('click', () => { fullTextModal.classList.remove('hidden'); fullTextModal.classList.add('flex'); });
+        closeFullTextModalButton.addEventListener('click', () => { fullTextModal.classList.add('hidden'); fullTextModal.classList.remove('flex'); });
+        colorSwatches.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; isFullTextMode = true; fullTextColor = button.dataset.color; updateComposerFullTextStyle(); closeFullTextModalButton.click(); });
+        fontSwatches.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; isFullTextMode = true; fullTextFont = button.dataset.font || 'font-inter'; updateComposerFullTextStyle(); closeFullTextModalButton.click(); });
+        
+        // --- New Poll Creator Logic ---
+        function addPollOptionCreatorInput(value = '') {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'flex items-center space-x-2';
+            const placeholderText = `Opsi ${pollOptionsCreator.children.length + 1}`;
+            optionDiv.innerHTML = `<input type="text" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-black dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:ring-white" placeholder="${placeholderText}"><button type="button" class="remove-poll-option-creator text-red-500 hover:text-red-700 text-xl">&times;</button>`;
+            pollOptionsCreator.appendChild(optionDiv);
+            
+            optionDiv.querySelector('.remove-poll-option-creator').addEventListener('click', () => {
+                if (pollOptionsCreator.children.length > 2) {
+                    optionDiv.remove();
+                    // Re-number placeholders
+                    Array.from(pollOptionsCreator.querySelectorAll('input')).forEach((input, index) => {
+                        input.placeholder = `Opsi ${index + 1}`;
+                    });
+                    validatePostButton();
+                }
+            });
+            optionDiv.querySelector('input').addEventListener('input', validatePostButton);
+            validatePostButton();
+        }
+        
+        pollQuestionInput.addEventListener('input', validatePostButton);
+
+        pollButton.addEventListener('click', () => {
+            isPollMode = !isPollMode;
+            if (isPollMode) {
+                // Entering poll mode
+                resetComposerStyle(); // Ensure not in full text mode
+                postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = ''; imageUploadInput.value = ''; videoUploadInput.value = '';
+                pollCreatorContainer.classList.remove('hidden');
+                pollButton.classList.add('text-orange-500');
+                if (pollOptionsCreator.children.length === 0) {
+                    addPollOptionCreatorInput();
+                    addPollOptionCreatorInput();
+                }
+            } else {
+                // Exiting poll mode
+                pollCreatorContainer.classList.add('hidden');
+                pollButton.classList.remove('text-orange-500');
+                pollOptionsCreator.innerHTML = '';
+            }
+            validatePostButton();
+        });
+
+        removePollCreatorButton.addEventListener('click', () => {
+            isPollMode = false;
+            pollCreatorContainer.classList.add('hidden');
+            pollButton.classList.remove('text-orange-500');
+            pollOptionsCreator.innerHTML = '';
+            pollQuestionInput.value = '';
+            validatePostButton();
+        });
+
+        addPollOptionButton.addEventListener('click', () => {
+            if (pollOptionsCreator.children.length < 5) {
+                addPollOptionCreatorInput();
+            }
+        });
+        // --- End of New Poll Creator Logic ---
+
+        // --- START: FIX for Promote Modal ---
+        
+        function validatePromoteForm() {
+            const content = promoteContentInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+            submitPromotePostButton.disabled = !content || !buttonText;
+        }
+
+        function handlePromoteMediaUpload(event, mediaType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            promoteImageFile = mediaType === 'image' ? file : null;
+            promoteVideoFile = mediaType === 'video' ? file : null;
+            promoteImageUpload.value = '';
+            promoteVideoUpload.value = '';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let previewHtml = '';
+                const removeBtnHtml = `<button class="remove-media-btn absolute top-2 right-2 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center text-lg">&times;</button>`;
+                if (mediaType === 'image') {
+                    previewHtml = `<div class="preview-container relative"><img src="${e.target.result}" class="rounded-lg max-h-40">${removeBtnHtml}</div>`;
+                } else {
+                    previewHtml = `<div class="preview-container relative"><video src="${e.target.result}" class="rounded-lg max-h-40" muted loop autoplay></video>${removeBtnHtml}</div>`;
+                }
+                promoteMediaPreview.innerHTML = previewHtml;
+                promoteMediaPreview.querySelector('.remove-media-btn').onclick = () => {
+                    promoteImageFile = null;
+                    promoteVideoFile = null;
+                    promoteMediaPreview.innerHTML = '';
+                    validatePromoteForm();
+                };
+            };
+            reader.readAsDataURL(file);
+            validatePromoteForm();
+        }
+
+        promoteButton.addEventListener('click', () => {
+            promoteModal.classList.remove('hidden');
+            promoteModal.classList.add('flex');
+            setTimeout(() => promoteModal.classList.add('is-visible'), 10);
+        });
+
+        closePromoteModalButton.addEventListener('click', () => {
+            promoteModal.classList.remove('is-visible');
+            setTimeout(() => {
+                promoteModal.classList.add('hidden');
+                promoteModal.classList.remove('flex');
+            }, 250);
+        });
+        
+        promoteModal.addEventListener('click', (e) => {
+            if (e.target === promoteModal) {
+                closePromoteModalButton.click();
+            }
+        });
+
+        promoteImageUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'image'));
+        promoteVideoUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'video'));
+        promoteContentInput.addEventListener('input', validatePromoteForm);
+        promoteButtonTextInput.addEventListener('input', validatePromoteForm);
+        
+        submitPromotePostButton.addEventListener('click', async () => {
+            const content = promoteContentInput.value.trim();
+            const link = promoteLinkInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+
+            if (!content || !buttonText) return;
+
+            submitPromotePostButton.disabled = true;
+            submitPromotePostButton.textContent = 'Memproses...';
+
+            let imageUrl = null, videoUrl = null;
+            const fileToUpload = promoteImageFile || promoteVideoFile;
+
+            if (fileToUpload) {
+                const fileName = `${currentUser.id}/promote_${Date.now()}`;
+                const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload);
+                if (uploadError) {
+                    showToast('Gagal mengunggah media.');
+                    submitPromotePostButton.disabled = false;
+                    submitPromotePostButton.textContent = 'Promosikan';
+                    return;
+                }
+                const { data: urlData } = db.storage.from('media').getPublicUrl(fileName);
+                if (promoteImageFile) imageUrl = urlData.publicUrl;
+                if (promoteVideoFile) videoUrl = urlData.publicUrl;
+            }
+
+            const postData = {
+                content,
+                user_id: currentUser.id,
+                image_url: imageUrl,
+                video_url: videoUrl,
+                is_promotion: true,
+                promotion_link: link || null,
+                promotion_button_text: buttonText
+            };
+
+            const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single();
+
+            if (insertError) {
+                showToast('Gagal mempromosikan postingan.');
+            } else {
+                showToast('Postingan berhasil dipromosikan!');
+                // Reset form and close modal
+                promoteContentInput.value = '';
+                promoteLinkInput.value = '';
+                promoteButtonTextInput.value = '';
+                promoteMediaPreview.innerHTML = '';
+                promoteImageFile = null;
+                promoteVideoFile = null;
+                closePromoteModalButton.click();
+                await fetchPosts();
+            }
+
+            submitPromotePostButton.disabled = false;
+            submitPromotePostButton.textContent = 'Promosikan';
+        });
+
+        // --- END: FIX for Promote Modal ---
         
         modalContent.addEventListener('click', async (e) => {
-            const replyBtn = e.target.closest('.reply-button'); if (replyBtn) { const repliedToCommentId = replyBtn.dataset.commentId; const repliedToUsername = replyBtn.dataset.username; const repliedToComment = commentsById.get(repliedToCommentId); let newParentId = repliedToCommentId; let current = repliedToComment; while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); } activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername }; replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`; replyingToBanner.classList.remove('hidden'); commentInput.focus(); document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); }; }
-            const toggleBtn = e.target.closest('.toggle-replies-button'); if (toggleBtn) { const repliesContainer = toggleBtn.nextElementSibling; if (repliesContainer) { repliesContainer.classList.toggle('hidden'); const isHidden = repliesContainer.classList.contains('hidden'); const replyCount = toggleBtn.textContent.match(/\d+/)[0]; toggleBtn.textContent = isHidden ? `Lihat ${replyCount} balasan` : 'Sembunyikan balasan'; } }
-            const likeCommentBtn = e.target.closest('.like-comment-button'); if (likeCommentBtn) { const commentId = likeCommentBtn.dataset.commentId; if (likeCommentBtn.disabled) return; likeCommentBtn.disabled = true; recentlyUpdatedCommentLikes.add(commentId); setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000); const wasLiked = likeCommentBtn.dataset.liked === 'true'; const countSpan = likeCommentBtn.querySelector('.comment-like-count'); const icon = likeCommentBtn.querySelector('i'); const originalCount = parseInt(countSpan.textContent); likeCommentBtn.dataset.liked = !wasLiked; countSpan.textContent = wasLiked ? originalCount - 1 : originalCount + 1; likeCommentBtn.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); try { const { error } = await db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id }); if (error) throw error; } catch(error) { console.error('Like error:', error); likeCommentBtn.dataset.liked = wasLiked; countSpan.textContent = originalCount; likeCommentBtn.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedCommentLikes.delete(commentId); } finally { likeCommentBtn.disabled = false; } }
-            const pinCommentBtn = e.target.closest('.pin-comment-button'); if(pinCommentBtn) { const commentId = pinCommentBtn.dataset.commentId; const isPinned = !(pinCommentBtn.dataset.pinned === 'true'); await db.from('comments').update({ is_pinned: isPinned }).eq('id', commentId); await openCommentModal(activePostForComment.id); }
-            const deleteCommentBtn = e.target.closest('.delete-comment-button'); if(deleteCommentBtn) { showConfirmModal('Komentar ini akan dihapus permanen.', async () => { await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId); await openCommentModal(activePostForComment.id); }); }
+            const replyBtn = e.target.closest('.reply-button');
+            if (replyBtn) {
+                const repliedToCommentId = replyBtn.dataset.commentId;
+                const repliedToUsername = replyBtn.dataset.username;
+                const repliedToComment = commentsById.get(repliedToCommentId);
+                let newParentId = repliedToCommentId;
+                let current = repliedToComment;
+                while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); }
+                activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername };
+                replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`;
+                replyingToBanner.classList.remove('hidden');
+                commentInput.focus();
+                document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); };
+            }
+
+            const toggleBtn = e.target.closest('.toggle-replies-button');
+            if (toggleBtn) {
+                const repliesContainer = toggleBtn.nextElementSibling;
+                if (repliesContainer) {
+                    repliesContainer.classList.toggle('hidden');
+                    const isHidden = repliesContainer.classList.contains('hidden');
+                    const replyCount = toggleBtn.textContent.match(/\d+/)[0];
+                    toggleBtn.textContent = isHidden ? `Lihat ${replyCount} balasan` : 'Sembunyikan balasan';
+                }
+            }
+            
+            const likeCommentBtn = e.target.closest('.like-comment-button');
+            if (likeCommentBtn) {
+                const commentId = likeCommentBtn.dataset.commentId;
+                if(likeCommentBtn.disabled) return;
+                likeCommentBtn.disabled = true;
+                recentlyUpdatedCommentLikes.add(commentId);
+                setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000);
+                const wasLiked = likeCommentBtn.dataset.liked === 'true';
+                const countSpan = likeCommentBtn.querySelector('.comment-like-count');
+                const icon = likeCommentBtn.querySelector('i');
+                const originalCount = parseInt(countSpan.textContent);
+                likeCommentBtn.dataset.liked = !wasLiked;
+                countSpan.textContent = wasLiked ? originalCount - 1 : originalCount + 1;
+                likeCommentBtn.classList.toggle('text-red-500', !wasLiked);
+                icon.classList.toggle('bi-heart-fill', !wasLiked);
+                icon.classList.toggle('bi-heart', wasLiked);
+                try {
+                    const { error } = await db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id });
+                    if (error) throw error;
+                } catch(error) {
+                    likeCommentBtn.dataset.liked = wasLiked;
+                    countSpan.textContent = originalCount;
+                    likeCommentBtn.classList.toggle('text-red-500', wasLiked);
+                    icon.classList.toggle('bi-heart-fill', wasLiked);
+                    icon.classList.toggle('bi-heart', !wasLiked);
+                    recentlyUpdatedCommentLikes.delete(commentId);
+                } finally {
+                    likeCommentBtn.disabled = false;
+                }
+            }
+            const pinCommentBtn = e.target.closest('.pin-comment-button');
+            if(pinCommentBtn) {
+                const commentId = pinCommentBtn.dataset.commentId;
+                const isPinned = !(pinCommentBtn.dataset.pinned === 'true');
+                await db.from('comments').update({ is_pinned: isPinned }).eq('id', commentId);
+                await openCommentModal(activePostForComment.id);
+            }
+            const deleteCommentBtn = e.target.closest('.delete-comment-button');
+            if(deleteCommentBtn) {
+                showConfirmModal('Komentar ini akan dihapus secara permanen.', async () => {
+                    await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId);
+                    await openCommentModal(activePostForComment.id);
+                });
+            }
         });
 
         submitCommentButton.addEventListener('click', async () => {
@@ -1317,35 +1753,82 @@
             const parentCommentId = activeReplyTo ? activeReplyTo.parentId : null;
             const replyToUsername = activeReplyTo ? activeReplyTo.replyToUsernameForDisplay : null;
             const { data: newComment, error } = await db.from('comments').insert({ content, user_id: currentUser.id, post_id: activePostForComment.id, parent_comment_id: parentCommentId, reply_to_username: replyToUsername, mentioned_users: mentionedUserIds }).select('*, post:posts(user_id)').single();
-            if (error) { console.error('Comment error:', error); if (postElementOnTimeline) postElementOnTimeline.querySelector('.comment-count').textContent = parseInt(postElementOnTimeline.querySelector('.comment-count').textContent) - 1; } else { const postOwnerId = newComment.post.user_id; if (postOwnerId !== currentUser.id) await db.from('notifications').insert({ recipient_id: postOwnerId, actor_id: currentUser.id, notification_type: 'comment', post_id: activePostForComment.id }); if (mentionedUserIds.length > 0) { const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: 'mention_comment', post_id: activePostForComment.id })); await db.from('notifications').insert(notifications); } commentInput.value = ''; activeReplyTo = null; replyingToBanner.classList.add('hidden'); await openCommentModal(activePostForComment.id); }
+            if (error) { if (postElementOnTimeline) postElementOnTimeline.querySelector('.comment-count').textContent = parseInt(postElementOnTimeline.querySelector('.comment-count').textContent) - 1; } else {
+                const postOwnerId = newComment.post.user_id;
+                if (postOwnerId !== currentUser.id) await db.from('notifications').insert({ recipient_id: postOwnerId, actor_id: currentUser.id, notification_type: 'comment', post_id: activePostForComment.id });
+                if (mentionedUserIds.length > 0) {
+                    const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: 'mention_comment', post_id: activePostForComment.id }));
+                    await db.from('notifications').insert(notifications);
+                }
+                commentInput.value = '';
+                activeReplyTo = null; 
+                replyingToBanner.classList.add('hidden');
+                await openCommentModal(activePostForComment.id);
+            }
             submitCommentButton.disabled = false;
         });
 
-        closeModalButton.addEventListener('click', () => { const videoInModal = modalContent.querySelector('video'); if (videoInModal) { videoInModal.pause(); videoInModal.src = ''; } commentModal.classList.remove('is-visible'); setTimeout(() => { commentModal.classList.add('hidden'); commentModal.classList.remove('flex'); modalContent.innerHTML = ''; activePostForComment = null; activeReplyTo = null; replyingToBanner.classList.add('hidden'); setupVideoAutoplay(); }, 250); });
-        
-        closeEditModalButton.addEventListener('click', closeEditModal);
-        document.getElementById('logout-button').addEventListener('click', async () => { 
-            if(db) { await db.auth.signOut(); }
-            window.location.href = 'auth.html'; 
+        closeModalButton.addEventListener('click', () => {
+            const videoInModal = modalContent.querySelector('video');
+            if (videoInModal) { videoInModal.pause(); videoInModal.src = ''; }
+            commentModal.classList.remove('is-visible');
+            setTimeout(() => {
+                commentModal.classList.add('hidden');
+                commentModal.classList.remove('flex');
+                modalContent.innerHTML = ''; 
+                activePostForComment = null;
+                activeReplyTo = null;
+                replyingToBanner.classList.add('hidden');
+                setupVideoAutoplay();
+            }, 250);
         });
+
+        function resetComposerStyle() { 
+            isFullTextMode = false; fullTextColor = ''; fullTextFont = ''; 
+            postContentInput.className = 'w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-slate-100 dark:placeholder-slate-500'; postContentInput.style.color = ''; postContentInput.rows = 3; 
+        }
+        function updateComposerFullTextStyle() { 
+            isPollMode = false; pollCreatorContainer.classList.add('hidden'); pollButton.classList.remove('text-orange-500');
+            postImageFile = null; postVideoFile = null; imageUploadInput.value = ''; videoUploadInput.value = ''; mediaPreviewContainer.innerHTML = ''; postContentInput.className = `w-full p-8 text-lg border-none focus:ring-0 resize-none rounded-lg text-center flex items-center justify-center text-white transition-all duration-300 ${fullTextColor} ${fullTextFont}`; postContentInput.style.color = 'white'; postContentInput.rows = 5; 
+            validatePostButton();
+        }
         
+        document.getElementById('logout-button').addEventListener('click', async () => { if (db) { await db.auth.signOut(); } window.location.href = 'auth.html'; });
+        
+        forYouTab.addEventListener('click', () => switchTab('for-you'));
+        followingTab.addEventListener('click', () => switchTab('following'));
+
+        // --- Bug Hunter Sheet Logic ---
+        function hideBugHunterSheet() {
+            bugHunterSheet.classList.remove('is-visible');
+            localStorage.setItem('bugHunterSheetClosed', 'true');
+        }
+
+        closeBugSheetButton.addEventListener('click', hideBugHunterSheet);
+        bugHunterSheet.addEventListener('click', (e) => {
+            if (e.target === bugHunterSheet) {
+                hideBugHunterSheet();
+            }
+        });
+        // --- End Bug Hunter Sheet Logic ---
+
         async function initializeApp() {
             try {
                 const response = await fetch('/api/config');
                 if (!response.ok) throw new Error('Network response was not ok');
                 const config = await response.json();
                 if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
-
                 db = createClient(config.supabaseUrl, config.supabaseAnonKey);
-                
                 initialize();
-
+                window.addEventListener('resize', updateTabUI); // Add resize listener for indicator
             } catch (error) {
                 console.error("Initialization Error:", error);
                 document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-slate-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
             }
         }
+
         initializeApp();
     </script>
 </body>
 </html>
+
