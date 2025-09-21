@@ -60,11 +60,17 @@
         .interactive-btn:active { transform: scale(0.95); }
         .result-enter-animation, .post-enter-animation { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
         @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .poll-option { position: relative; border: 1px solid #d1d5db; border-radius: 0.75rem; padding: 0.75rem; cursor: pointer; overflow: hidden; transition: border-color 0.2s, background-color 0.2s; }
-        .poll-option:hover { border-color: #6366f1; }
-        .poll-option.user-voted { border-color: #4f46e5; background-color: #e0e7ff; font-weight: 500; }
-        .poll-progress { position: absolute; top: 0; left: 0; height: 100%; background-color: #c7d2fe; width: 0%; z-index: 1; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        .poll-option-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; }
+        .poll-option-display { position: relative; border: 1px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; overflow: hidden; transition: border-color 0.2s; }
+        .dark .poll-option-display { border-color: #475569; }
+        .poll-option-display:hover { border-color: #6366f1; }
+        .poll-option-display.voted-by-user { border-color: #4f46e5; }
+        .poll-option-bar { position: absolute; top: 0; left: 0; height: 100%; background-color: #c7d2fe; width: 0%; z-index: 0; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+        .dark .poll-option-bar { background-color: rgba(99, 102, 241, 0.3); }
+        .poll-option-text-container { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-radius: 0.5rem; transition: background-color 0.2s; }
+        .poll-option-display.voted-by-user .poll-option-text-container { background-color: #e0e7ff; font-weight: 500; }
+        .dark .poll-option-display.voted-by-user .poll-option-text-container { background-color: rgba(99, 102, 241, 0.2); }
+        .poll-option-display:not(.voted-by-user):hover .poll-option-text-container { background-color: #f1f5f9; }
+        .dark .poll-option-display:not(.voted-by-user):hover .poll-option-text-container { background-color: #1e293b; }
         .poll-option-percent { font-weight: 600; }
         #toast-notification { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); color: white; padding: 0.75rem 1.5rem; border-radius: 9999px; z-index: 100; opacity: 0; visibility: hidden; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s; }
         #toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
@@ -178,7 +184,6 @@
 
     <script>
         // --- THEME SWITCHER LOGIC ---
-        // Ditempatkan di sini untuk dieksekusi secepat mungkin
         const themeToggleBtnBody = document.querySelector('body');
         function applyTheme(theme) {
             if (theme === 'dark') {
@@ -284,7 +289,6 @@
             subscribeToChanges();
             updateSearchTabUI();
             
-            // Re-run search if query exists from previous session/navigation
             const urlParams = new URLSearchParams(window.location.search);
             const queryFromUrl = urlParams.get('q');
             if (queryFromUrl) {
@@ -340,7 +344,7 @@
                 profileElement.href = `profile.html?user_id=${profile.id}`;
                 profileElement.className = 'flex items-center p-4 border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors result-enter-animation';
                 profileElement.style.animationDelay = `${index * 70}ms`;
-                profileElement.innerHTML = `<img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700 mr-4"><div class="flex-1"><p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${profile.username}</p></div>`;
+                profileElement.innerHTML = `<img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700 mr-4"><div class="flex-1"><p class="font-bold flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${profile.username}</p></div>`;
                 container.appendChild(profileElement);
             });
         }
@@ -394,7 +398,6 @@
                 return;
             }
             
-            // Update URL
              const url = new URL(window.location);
              url.searchParams.set('q', query);
              window.history.replaceState({}, '', url);
@@ -438,8 +441,20 @@
         }
         
         // <!-- =================================================================== -->
-        // <!-- START: Fungsi-fungsi yang disalin dari index.html untuk interaktivitas postingan -->
+        // <!-- START: All interactive post functions are now integrated below -->
         // <!-- =================================================================== -->
+        
+        function escapeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getAvatarFallback(name) {
+            const initial = name ? name.trim().charAt(0).toUpperCase() : '?';
+            return `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${initial}&font=inter`;
+        }
 
         function showToast(message) { const toast = document.getElementById('toast-notification'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
         function showConfirmModal(message, onConfirm, { title = 'Konfirmasi Aksi', confirmText = 'Hapus', cancelText = 'Batal' } = {}) { const confirmModal = document.getElementById('confirm-modal'); document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-message').textContent = message; document.getElementById('confirm-modal-confirm').textContent = confirmText; document.getElementById('confirm-modal-cancel').textContent = cancelText; confirmCallbackHolder = onConfirm; confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); setTimeout(() => confirmModal.classList.add('is-visible'), 10); }
@@ -452,17 +467,19 @@
             const div = document.createElement('div');
             div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4 post-enter-animation';
             div.id = `post-${post.id}`;
+            div.dataset.postObject = JSON.stringify(post);
             const profile = post.profiles;
             if (!profile) return div;
             const userHasLiked = (post.likes || []).some(like => like.user_id === currentUser.id);
             const likeCount = (post.likes || []).length;
             const commentCount = post.comments && post.comments[0] ? post.comments[0].count : 0;
-            const userInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-            const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             
-            const processedContent = post.content.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
+            const escapedContent = escapeHTML(post.content);
+            const processedContent = escapedContent.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
                 if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
                 if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
+                return match;
             });
 
             let postContentHtml = '';
@@ -473,9 +490,10 @@
                 const optionsHtml = (post.poll_options || []).map(option => {
                     const percent = totalVotes > 0 ? Math.round(((option.votes || 0) / totalVotes) * 100) : 0;
                     const hasVotedThis = userVote && userVote.option_text === option.option;
-                    return `<div class="poll-option dark:border-slate-600 dark:hover:border-indigo-400 ${hasVotedThis ? 'user-voted dark:border-indigo-400 dark:bg-indigo-900/50' : ''}" data-option="${option.option}" data-post-id="${post.id}">${userVote ? `<div class="poll-progress dark:bg-indigo-500/60" style="width: ${percent}%;"></div>` : ''}<div class="poll-option-content"><span>${option.option}</span>${userVote ? `<span class="poll-option-percent">${percent}%</span>` : ''}</div></div>`;
+                    const showResults = !!userVote;
+                    return `<div class="poll-option-display ${hasVotedThis ? 'voted-by-user' : ''}" data-option="${escapeHTML(option.option)}" data-post-id="${post.id}"><div class="poll-option-bar" style="width: ${showResults ? percent : 0}%;"></div><div class="poll-option-text-container"><span>${escapeHTML(option.option)}</span>${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}</div></div>`;
                 }).join('');
-                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p><div class="mt-3 space-y-2 poll-container" id="poll-${post.id}"><p class="font-bold text-lg">${post.poll_question}</p>${optionsHtml}<p class="text-xs text-gray-500 dark:text-slate-400 text-right">${totalVotes} suara</p></div>`;
+                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p><div class="mt-3 space-y-2 poll-container" id="poll-${post.id}"><p class="font-bold text-lg">${escapeHTML(post.poll_question)}</p><div class="space-y-2">${optionsHtml}</div><p class="text-xs text-gray-500 dark:text-slate-400 text-right">${totalVotes} suara</p></div>`;
             } else if (post.is_full_text) {
                 postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
             } else {
@@ -485,15 +503,15 @@
                 postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>${mediaHtml}`;
             }
 
-            if (post.is_promotion && post.promotion_link) { postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${post.promotion_button_text || 'Pelajari Lebih Lanjut'}</a></div>`; }
-            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Dipromosikan</p>` : '';
+            if (post.is_promotion && post.promotion_link) { postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Pelajari Lebih Lanjut'}</a></div>`; }
+            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Dipromosikan oleh ${escapeHTML(profile.full_name)}</p>` : '';
             const reactions = post.reactions || [];
             const reactionCounts = reactions.reduce((acc, reaction) => { acc[reaction.reaction_type] = (acc[reaction.reaction_type] || 0) + 1; return acc; }, {});
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
             const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
 
-            div.innerHTML = `<div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700" loading="lazy"></a></div><div class="w-full"><div class="flex justify-between items-start"><div><a href="profile.html?user_id=${profile.id}" class="hover:underline"><p class="font-bold flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}<span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${profile.username}</span></p></a><p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p></div>${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 text-xl">&times;</button>` : ''}</div>${postContentHtml}${sponsoredLabel}<div class="reaction-summary">${reactionSummaryHtml}</div><div class="flex items-center justify-around text-gray-500 dark:text-slate-400 mt-3"><button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button><button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button><button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button><div data-post-id="${post.id}" class="reactions-container relative"><button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button></div></div></div>`;
+            div.innerHTML = `<div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700" loading="lazy"></a></div><div class="w-full"><div class="flex justify-between items-start"><div><a href="profile.html?user_id=${profile.id}" class="hover:underline"><p class="font-bold flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}<span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${profile.username}</span></p></a><p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p></div>${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 text-xl">&times;</button>` : ''}</div>${postContentHtml}${sponsoredLabel}<div class="reaction-summary">${reactionSummaryHtml}</div><div class="flex items-center justify-around text-gray-500 dark:text-slate-400 mt-3"><button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button><button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button><button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button><div data-post-id="${post.id}" class="reactions-container relative"><button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button></div></div></div>`;
             
             const video = div.querySelector('video');
             if (video) {
@@ -508,8 +526,7 @@
             const div = document.createElement('div');
             div.className = `flex space-x-3 mt-4 comment-container ${comment.is_pinned ? 'comment-pinned' : ''}`;
             div.id = `comment-${comment.id}`;
-            const userInitial = profile.full_name.charAt(0).toUpperCase();
-            const profilePicUrl = profile.profile_avatar_url || `https://placehold.co/40x40/1A1A1A/FFFFFF?text=${userInitial}&font=inter`;
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             const liked_by = comment.liked_by || [];
             const userHasLiked = liked_by.includes(currentUser.id);
             const likeCount = liked_by.length;
@@ -517,10 +534,11 @@
             const isCommentOwner = currentUser.id === comment.user_id;
             let replyToMentionSpan = '';
             if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
-            const processedContent = comment.content.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
+            const escapedContent = escapeHTML(comment.content);
+            const processedContent = escapedContent.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-slate-700 flex-shrink-0"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${profile.full_name} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-slate-700 flex-shrink-0"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
             return div;
         }
 
@@ -564,7 +582,7 @@
         }
 
         async function parseMentions(text) { const mentionRegex = /@(\w+)/g; const mentions = text.match(mentionRegex); if (!mentions) return { ids: [], usernames: [] }; const usernames = [...new Set(mentions.map(m => m.substring(1)))]; const { data, error } = await db.from('profiles').select('id, username').in('username', usernames); return error ? { ids: [], usernames: [] } : { ids: data.map(u => u.id), usernames: data.map(u => u.username) }; }
-        function setupMentionHandler(inputElement, popupElement) { let mentionStartIndex = -1; inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart; const atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${user.full_name}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`).join(''); popupElement.classList.remove('hidden'); } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } }); popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } }); }
+        function setupMentionHandler(inputElement, popupElement) { let mentionStartIndex = -1; inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart; const atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${user.profile_avatar_url || 'https://placehold.co/40x40'}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${escapeHTML(user.full_name)}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`).join(''); popupElement.classList.remove('hidden'); } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } } else { popupElement.classList.add('hidden'); } }); popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } }); }
         
         async function updatePostPollData(postId) {
             const { data: allVotes, error: votesError } = await db.from('poll_votes').select('option_text').eq('post_id', postId);
@@ -578,7 +596,7 @@
 
         async function handleLikeChange(postId, elementContext = null) {
             if (recentlyUpdatedPostLikes.has(postId)) return;
-            const postElement = elementContext || document.getElementById(`post-${postId}`);
+            const postElement = elementContext ? elementContext.querySelector(`#post-${postId}`) : document.getElementById(`post-${postId}`);
             if (!postElement) return;
             const likeButton = postElement.querySelector('.like-button:not(.like-comment-button)');
             if (!likeButton) return;
@@ -627,7 +645,7 @@
         }
         
         async function updatePostReactionsUI(postId, elementContext = null) {
-            const postElement = elementContext ? elementContext.querySelector(`[id='post-${postId}']`) : document.getElementById(`post-${postId}`);
+            const postElement = elementContext ? elementContext.querySelector(`#post-${postId}`) : document.getElementById(`post-${postId}`);
             if (!postElement) return;
             const { data: reactions, error } = await db.from('reactions').select('*').eq('post_id', postId);
             if (error) return;
@@ -644,27 +662,25 @@
             const pollContainer = elementContext.querySelector(`#poll-${postId}`);
             if (!pollContainer) { return; }
             const userVote = (pollVotes || []).find(v => v.user_id === currentUser.id);
-            const totalVotes = (pollOptions || []).reduce((sum, opt) => sum + opt.votes, 0);
-            pollContainer.querySelectorAll('.poll-option').forEach(optionEl => {
+            const totalVotes = (pollOptions || []).reduce((sum, opt) => sum + (opt.votes || 0), 0);
+            pollContainer.querySelectorAll('.poll-option-display').forEach(optionEl => {
                 const optionText = optionEl.dataset.option;
                 const optionData = pollOptions.find(o => o.option === optionText);
                 if (!optionData) return;
                 const hasVotedThis = userVote && userVote.option_text === optionText;
-                optionEl.classList.toggle('user-voted', hasVotedThis);
-                optionEl.classList.toggle('dark:border-indigo-400', hasVotedThis);
-                optionEl.classList.toggle('dark:bg-indigo-900/50', hasVotedThis);
-                const percent = totalVotes > 0 ? Math.round((optionData.votes / totalVotes) * 100) : 0;
-                let progressEl = optionEl.querySelector('.poll-progress');
-                let percentEl = optionEl.querySelector('.poll-option-percent');
-                const contentEl = optionEl.querySelector('.poll-option-content');
+                optionEl.classList.toggle('voted-by-user', hasVotedThis);
+                const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
+                let progressBar = optionEl.querySelector('.poll-option-bar');
+                let percentTextEl = optionEl.querySelector('.poll-option-percent');
+                const textContainer = optionEl.querySelector('.poll-option-text-container');
                 if (userVote) {
-                    if (!progressEl) { progressEl = document.createElement('div'); progressEl.className = 'poll-progress dark:bg-indigo-500/60'; optionEl.prepend(progressEl); }
-                    if (!percentEl) { percentEl = document.createElement('span'); percentEl.className = 'poll-option-percent'; if(contentEl) contentEl.appendChild(percentEl); }
-                    percentEl.textContent = `${percent}%`;
-                    setTimeout(() => { if (progressEl) progressEl.style.width = `${percent}%`; }, 10);
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+                    if (!percentTextEl) { const newPercentEl = document.createElement('span'); newPercentEl.className = 'poll-option-percent'; textContainer.appendChild(newPercentEl); }
+                    percentTextEl = optionEl.querySelector('.poll-option-percent');
+                    if (percentTextEl) percentTextEl.textContent = `${percent}%`;
                 } else {
-                    if (progressEl) { progressEl.style.width = '0%'; progressEl.addEventListener('transitionend', () => progressEl.remove(), { once: true }); }
-                    if (percentEl) { percentEl.remove(); }
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (percentTextEl) percentTextEl.remove();
                 }
             });
             const totalVotesEl = pollContainer.querySelector('.text-right');
@@ -672,11 +688,11 @@
         }
 
         function subscribeToChanges() {
-            db.channel('public-changes')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, (payload) => handleLikeChange(payload.new?.post_id || payload.old?.post_id, searchResultsContainer))
+            db.channel('public-changes-search')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, (payload) => handleLikeChange(payload.new?.post_id || payload.old?.post_id))
               .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, (payload) => {
                   const postId = payload.new?.post_id || payload.old?.post_id;
-                  updatePostReactionsUI(postId, searchResultsContainer);
+                  updatePostReactionsUI(postId);
                   if (activePostForComment?.id == postId) updatePostReactionsUI(postId, modalContent);
               })
               .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => {
@@ -685,12 +701,12 @@
               })
               .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, async (payload) => {
                     const postId = payload.new.id;
-                    const postElement = searchResultsContainer.querySelector(`#post-${postId}`);
+                    const postElement = document.getElementById(`post-${postId}`);
                     const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
                     if (payload.new.is_poll && (postElement || modalPostElement)) {
                         const { data: updatedPost, error } = await db.from('posts').select('poll_options, poll_votes(user_id, option_text)').eq('id', postId).single();
                         if (error) return;
-                        if (postElement) updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes, searchResultsContainer);
+                        if (postElement) updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes);
                         if (modalPostElement) updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes, modalContent);
                     }
               })
@@ -708,20 +724,23 @@
                 if (video.paused) video.play(); else video.pause();
             }
             
-            const pollOption = e.target.closest('.poll-option');
+            const pollOption = e.target.closest('.poll-option-display');
             if (pollOption) {
-                if (pollOption.getAttribute('data-processing') === 'true') return;
+                const postElement = pollOption.closest('.post-enter-animation');
+                if (!postElement || !postElement.dataset.postObject || pollOption.getAttribute('data-processing') === 'true') return;
                 pollOption.setAttribute('data-processing', 'true');
-                const postId = pollOption.dataset.postId;
-                const optionText = pollOption.dataset.option;
-                try {
-                    const { data: existingVote } = await db.from('poll_votes').select('id, option_text').eq('post_id', postId).eq('user_id', currentUser.id).maybeSingle();
-                    if (existingVote) {
-                        if (existingVote.option_text === optionText) await db.from('poll_votes').delete().eq('id', existingVote.id);
-                        else await db.from('poll_votes').update({ option_text: optionText }).eq('id', existingVote.id);
-                    } else { await db.from('poll_votes').insert({ post_id: postId, user_id: currentUser.id, option_text: optionText }); }
-                    await updatePostPollData(postId);
-                } finally { pollOption.removeAttribute('data-processing'); }
+                let post = JSON.parse(postElement.dataset.postObject);
+                const postId = post.id, optionText = pollOption.dataset.option, userId = currentUser.id;
+                let pollVotes = post.poll_votes || [], pollOptions = post.poll_options || [];
+                const existingVoteIndex = pollVotes.findIndex(v => v.user_id === userId);
+                const oldOptionText = existingVoteIndex !== -1 ? pollVotes[existingVoteIndex].option_text : null;
+                if (oldOptionText) { const oldOption = pollOptions.find(o => o.option === oldOptionText); if (oldOption) oldOption.votes = Math.max(0, oldOption.votes - 1); }
+                if (oldOptionText === optionText) { pollVotes.splice(existingVoteIndex, 1);
+                } else { const newOption = pollOptions.find(o => o.option === optionText); if (newOption) newOption.votes++; if (existingVoteIndex !== -1) { pollVotes[existingVoteIndex].option_text = optionText; } else { pollVotes.push({ user_id: userId, option_text: optionText, post_id: postId }); } }
+                post.poll_votes = pollVotes; post.poll_options = pollOptions; postElement.dataset.postObject = JSON.stringify(post);
+                updatePollUI(postId, pollOptions, pollVotes, document);
+                const modalPostElement = document.querySelector(`#modal-content #post-${postId}`); if (modalPostElement) { modalPostElement.dataset.postObject = JSON.stringify(post); updatePollUI(postId, pollOptions, pollVotes, modalContent); }
+                (async () => { try { if (oldOptionText) { if (oldOptionText === optionText) await db.from('poll_votes').delete().match({ post_id: postId, user_id: userId }); else await db.from('poll_votes').update({ option_text: optionText }).match({ post_id: postId, user_id: userId }); } else { await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText }); } await updatePostPollData(postId); } catch (error) { const { data: r } = await db.from('posts').select(`*, poll_votes(user_id, option_text)`).eq('id', postId).single(); if (r) { postElement.dataset.postObject = JSON.stringify(r); updatePollUI(postId, r.poll_options, r.poll_votes, document); if (modalPostElement) { modalPostElement.dataset.postObject = JSON.stringify(r); updatePollUI(postId, r.poll_options, r.poll_votes, modalContent); } } } finally { pollOption.removeAttribute('data-processing'); } })();
             }
 
             const copyLinkButton = e.target.closest('.copy-link-button');
@@ -745,7 +764,18 @@
                 const postId = likeButton.dataset.postId;
                 if(likeButton.disabled) return;
                 likeButton.disabled = true;
-                db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).finally(() => { likeButton.disabled = false; handleLikeChange(postId, searchResultsContainer) });
+                recentlyUpdatedPostLikes.add(postId);
+                setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000);
+                const wasLiked = likeButton.dataset.liked === 'true';
+                const likeCountSpan = likeButton.querySelector('.like-count');
+                const icon = likeButton.querySelector('i');
+                const currentCount = parseInt(likeCountSpan.textContent);
+                likeButton.dataset.liked = !wasLiked;
+                likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1;
+                likeButton.classList.toggle('text-red-500', !wasLiked);
+                icon.classList.toggle('bi-heart-fill', !wasLiked);
+                icon.classList.toggle('bi-heart', wasLiked);
+                db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).then(({ error }) => { if (error) { likeButton.dataset.liked = wasLiked; likeCountSpan.textContent = currentCount; likeButton.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedPostLikes.delete(postId); } }).finally(() => { likeButton.disabled = false; });
             }
 
             const commentButton = e.target.closest('.comment-button');
@@ -818,7 +848,11 @@
             const likeCommentBtn = e.target.closest('.like-comment-button');
             if (likeCommentBtn) {
                 const commentId = likeCommentBtn.dataset.commentId;
-                db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id });
+                 if(likeCommentBtn.disabled) return;
+                likeCommentBtn.disabled = true;
+                recentlyUpdatedCommentLikes.add(commentId);
+                setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000);
+                db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id }).finally(() => { likeCommentBtn.disabled = false; });
             }
             const pinCommentBtn = e.target.closest('.pin-comment-button');
             if(pinCommentBtn) {
