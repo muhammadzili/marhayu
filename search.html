@@ -22,8 +22,8 @@
         body { font-family: 'Inter', sans-serif; }
         .font-lora { font-family: 'Lora', serif; }
         .font-playfair { font-family: 'Playfair Display', serif; }
-        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, #poll-options-container::-webkit-scrollbar, #search-results::-webkit-scrollbar { display: none; }
-        .modal-content, .sidebar-nav, #poll-options-container, #search-results { -ms-overflow-style: none; scrollbar-width: none; }
+        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, #search-results::-webkit-scrollbar { display: none; }
+        .modal-content, .sidebar-nav, #search-results { -ms-overflow-style: none; scrollbar-width: none; }
         .icon-btn { transition: color 0.2s ease-in-out; }
         .preview-container { position: relative; }
         .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
@@ -120,14 +120,14 @@
                 </div>
                  <div id="search-tab-container" class="flex relative border-b border-gray-200 dark:border-slate-700">
                     <button id="users-tab" class="search-tab-btn flex-1 text-center py-3 font-semibold text-black dark:text-white transition-colors">Pengguna</button>
-                    <button id="posts-tab" class="search-tab-btn flex-1 text-center py-3 font-semibold text-gray-500 dark:text-slate-400 transition-colors">Postingan</button>
+                    
                     <div id="search-tab-indicator" class="bg-black dark:bg-white"></div>
                 </div>
             </header>
 
             <!-- Search Results -->
             <div id="search-results" class="flex-grow overflow-y-auto">
-                <p class="p-4 text-center text-gray-500 dark:text-slate-400">Cari pengguna, postingan, atau tagar di Marhayu.</p>
+                <p class="p-4 text-center text-gray-500 dark:text-slate-400">Cari pengguna di Marhayu.</p>
             </div>
         </main>
     </div>
@@ -223,7 +223,7 @@
         const commentModal = document.getElementById('comment-modal'), closeModalButton = document.getElementById('close-modal-button'), modalContent = document.getElementById('modal-content'), commentInput = document.getElementById('comment-input'), submitCommentButton = document.getElementById('submit-comment'), replyingToBanner = document.getElementById('replying-to-banner');
         const globalReactionPopover = document.getElementById('global-reaction-popover');
         const usersTab = document.getElementById('users-tab');
-        const postsTab = document.getElementById('posts-tab');
+        
         
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions.map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`).join('');
@@ -305,12 +305,9 @@
             if (!indicator) return;
 
             const activeBtn = document.getElementById(`${activeSearchTab}-tab`);
-            const inactiveBtn = activeSearchTab === 'users' ? postsTab : usersTab;
-
+            
             activeBtn.classList.add('text-black', 'dark:text-white');
             activeBtn.classList.remove('text-gray-500', 'dark:text-slate-400');
-            inactiveBtn.classList.add('text-gray-500', 'dark:text-slate-400');
-            inactiveBtn.classList.remove('text-black', 'dark:text-white');
             
             indicator.style.left = `${activeBtn.offsetLeft}px`;
             indicator.style.width = `${activeBtn.offsetWidth}px`;
@@ -327,7 +324,7 @@
             const div = document.createElement('div');
             if (type === 'user') {
                 div.className = 'flex items-center p-4 border-b border-gray-200 dark:border-slate-700';
-                div.innerHTML = `<div class="w-12 h-12 rounded-2xl skeleton mr-4"></div><div class="flex-1 space-y-2"><div class="w-1/3 h-5 skeleton"></div><div class="w-1/4 h-4 skeleton"></div></div>`;
+                div.innerHTML = `<div class="w-12 h-12 rounded-full skeleton mr-4"></div><div class="flex-1 space-y-2"><div class="w-1/3 h-5 skeleton"></div><div class="w-1/4 h-4 skeleton"></div></div>`;
             } else { // post
                 div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4';
                 div.innerHTML = `<div class="w-12 h-12 rounded-full skeleton flex-shrink-0"></div><div class="w-full space-y-3"><div class="flex justify-between items-center"><div class="w-1/2 h-5 skeleton"></div></div><div class="w-full h-4 skeleton"></div><div class="w-3/4 h-4 skeleton"></div><div class="w-full h-48 skeleton mt-2 !rounded-xl"></div></div>`;
@@ -352,51 +349,10 @@
             });
         }
         
-        function renderPostResults(posts, container) {
-            if (!posts || posts.length === 0) {
-                 container.innerHTML = '<p class="p-4 text-center text-gray-500 dark:text-slate-400">Tidak ada postingan yang cocok.</p>';
-                return;
-            }
-            const postElements = posts.map((post, index) => {
-                const postElement = createPostElement(post);
-                postElement.style.animationDelay = `${index * 100}ms`;
-                return postElement;
-            });
-            container.append(...postElements);
-            setupVideoAutoplay();
-        }
-
-        async function searchUsers(query) {
-             if (!currentUser) return [];
-             const { data, error } = await db.from('profiles').select('*').or(`full_name.ilike.%${query}%,username.ilike.%${query}%`).neq('id', currentUser.id).limit(20);
-             if (error) { console.error('Error searching users:', error); return []; }
-             return data;
-        }
-        
-        async function searchPosts(query) {
-            if (!currentUser) return [];
-            let queryBuilder = db.from('posts')
-                .select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`)
-                .textSearch('content', `'${query.replace(/'/g, "''")}'`, { type: 'websearch', config: 'english' })
-                .limit(20);
-
-            const { data, error } = await queryBuilder;
-            if (error) { console.error('Error searching posts:', error); return []; }
-            return data.filter(post => {
-                const author = post.profiles;
-                if (!author) return false;
-                if (author.id === currentUser.id) return true;
-                if (!author.is_private) return true;
-                if (author.is_private && followingIds.includes(author.id)) return true;
-                return false;
-            });
-        }
-
-
         async function handleSearch() {
             const query = searchInput.value.trim();
             if (query.length < 1) {
-                searchResultsContainer.innerHTML = `<p class="p-4 text-center text-gray-500 dark:text-slate-400">Cari pengguna, postingan, atau tagar di Marhayu.</p>`;
+                searchResultsContainer.innerHTML = `<p class="p-4 text-center text-gray-500 dark:text-slate-400">Cari pengguna di Marhayu.</p>`;
                 window.history.replaceState({}, '', 'search.html');
                 return;
             }
@@ -409,20 +365,9 @@
             searchResultsContainer.innerHTML = '';
             for(let i=0; i<5; i++) { searchResultsContainer.appendChild(createSkeletonResult(activeSearchTab)); }
 
-            if (activeSearchTab === 'users') {
-                const users = await searchUsers(query);
-                searchResultsContainer.innerHTML = '';
-                renderUserResults(users, searchResultsContainer);
-            } else if (activeSearchTab === 'posts') {
-                 if (query.startsWith('#')) {
-                    const hashtag = query.substring(1);
-                    window.location.href = `index.html?hashtag=${hashtag}`;
-                    return;
-                }
-                const posts = await searchPosts(query);
-                searchResultsContainer.innerHTML = '';
-                renderPostResults(posts, searchResultsContainer);
-            }
+            const users = await searchUsers(query);
+            searchResultsContainer.innerHTML = '';
+            renderUserResults(users, searchResultsContainer);
         }
         
         let searchTimeout;
@@ -920,7 +865,6 @@
         
         setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
         usersTab.addEventListener('click', () => switchSearchTab('users'));
-        postsTab.addEventListener('click', () => switchSearchTab('posts'));
         window.addEventListener('resize', updateSearchTabUI);
 
         initializeApp();
