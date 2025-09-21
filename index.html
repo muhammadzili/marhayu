@@ -264,7 +264,7 @@
         }
         @keyframes pulse-glow {
             0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
+            50% { opacity: 0.9; transform: scale(1); }
         }
     </style>
 </head>
@@ -1272,7 +1272,7 @@
             commentModal.classList.remove('hidden');
             commentModal.classList.add('flex');
             setTimeout(() => commentModal.classList.add('is-visible'), 10);
-            const { data: post, error: postError } = await db.from('posts').select(`*, profiles(is_founder, is_security, is_one, is_verified), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).eq('id', postId).single();
+            const { data: post, error: postError } = await db.from('posts').select(`*, profiles(is_founder, is_security, is_one, is_verified, full_name, username, profile_avatar_url), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).eq('id', postId).single();
             if (postError) { modalContent.innerHTML = '<p>Gagal memuat postingan.</p>'; return; }
             activePostForComment = post;
             const { data: comments, error: commentsError } = await db.from('comments').select(`*`).eq('post_id', postId);
