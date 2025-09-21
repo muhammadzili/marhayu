@@ -27,8 +27,11 @@
         .icon-btn { transition: color 0.2s ease-in-out; }
         .preview-container { position: relative; }
         .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
+        
+        /* FIX: Mengatasi bug latar belakang komentar disematkan di dark mode */
         .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
-        .dark .comment-pinned .dark\:bg-slate-800 { background-color: rgba(71, 85, 105, 0.3) !important; }
+        .dark .comment-pinned .dark\:bg-slate-700 { background-color: rgba(71, 85, 105, 0.3) !important; }
+        
         .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
         .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
         .mention-item:hover { background-color: #f3f4f6; }
@@ -128,6 +131,19 @@
         #edit-name-char-counter.limit-exceeded {
             color: #ef4444;
         }
+        
+        /* Custom scrollbar for dark mode */
+        main::-webkit-scrollbar {
+            width: 12px;
+        }
+        .dark main::-webkit-scrollbar-track {
+            background: #0f172a; /* slate-900 */
+        }
+        .dark main::-webkit-scrollbar-thumb {
+            background-color: #334155; /* slate-700 */
+            border-radius: 6px;
+            border: 3px solid #0f172a; /* slate-900 */
+        }
     </style>
 </head>
 <body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
@@ -162,7 +178,7 @@
                 <div id="profile-banner" class="h-48 bg-gray-300 dark:bg-slate-700 bg-cover bg-center"></div>
                 <div class="p-4">
                     <div class="flex justify-between items-start">
-                        <img src="https://placehold.co/128x128/e5e7eb/e5e7eb?text= " id="profile-avatar" class="w-32 h-32 rounded-3xl -mt-20 border-4 border-white dark:border-slate-900 bg-gray-300 dark:bg-slate-700">
+                        <img src="https://placehold.co/128x128/e5e7eb/e5e7eb?text= " id="profile-avatar" class="w-32 h-32 rounded-3xl -mt-20 border-4 border-white dark:border-slate-900 bg-gray-300 dark:bg-slate-700 object-cover">
                         <div id="profile-action-button-container"></div>
                     </div>
                     <div class="mt-2">
@@ -403,7 +419,7 @@
 
             function enableSaveButton() {
                 const nameLength = fullNameInput.value.length;
-                saveButton.disabled = nameLength > 20;
+                saveButton.disabled = nameLength > 20 || usernameInput.value.trim() === '';
             }
 
             fullNameInput.addEventListener('input', () => {
@@ -483,7 +499,7 @@
                 const { data: profile, error } = await db.from('profiles').select('id').eq('username', usernameFromQuery).single();
                 if (error || !profile) {
                     console.error("Profil tidak ditemukan untuk username:", usernameFromQuery);
-                    document.body.innerHTML = `<div class="p-8 text-center"><h1 class="font-bold text-xl">404 - Pengguna Tidak Ditemukan</h1><p class="text-gray-600 dark:text-slate-400">Profil dengan @${usernameFromQuery} tidak ada.</p> <a href="index.html" class="text-blue-500 mt-4 inline-block">Kembali ke Beranda</a></div>`;
+                    document.body.innerHTML = `<div class="p-8 text-center"><h1 class="font-bold text-xl">404 - Pengguna Tidak Ditemukan</h1><p class="text-gray-600 dark:text-slate-400">Profil dengan @${escapeHTML(usernameFromQuery)} tidak ada.</p> <a href="index.html" class="text-blue-500 mt-4 inline-block">Kembali ke Beranda</a></div>`;
                     return;
                 }
                 userIdToFetch = profile.id;
@@ -508,7 +524,9 @@
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             const mentionRegex = /@(\w+)/g;
             let processedText = escapedText.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline">$1</a>');
-            processedText = processedText.replace(mentionRegex, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
+            processedText = processedText.replace(mentionRegex, (match, mention) => {
+                 return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+            });
             return processedText;
         }
 
@@ -535,7 +553,7 @@
             document.getElementById('profile-bio').innerHTML = processBio(profile.bio);
 
             if (profile.banner_url) {
-                 document.getElementById('profile-banner').style.backgroundImage = `url(${profile.banner_url})`;
+                 document.getElementById('profile-banner').style.backgroundImage = `url('${escapeHTML(profile.banner_url)}')`;
             } else {
                  document.getElementById('profile-banner').style.backgroundImage = '';
             }
@@ -762,8 +780,8 @@
             
             const escapedContent = escapeHTML(post.content);
             const processedContent = escapedContent.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
-                if (mention) return `<a href="profile.html?username=${mention}" class="text-blue-500 hover:underline">@${mention}</a>`;
-                if (hashtag) return `<a href="index.html?hashtag=${hashtag.toLowerCase()}" class="text-blue-500 hover:underline">#${hashtag}</a>`;
+                if (mention) return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+                if (hashtag) return `<a href="index.html?hashtag=${encodeURIComponent(hashtag.toLowerCase())}" class="text-blue-500 hover:underline">#${escapeHTML(hashtag)}</a>`;
                 return match;
             });
 
@@ -803,9 +821,9 @@
                 postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
             } else {
                 let mediaHtml = '';
-                if (post.image_url) mediaHtml = `<img src="${post.image_url}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
+                if (post.image_url) mediaHtml = `<img src="${escapeHTML(post.image_url)}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
                 else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}">
-                                    <video src="${post.video_url}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
+                                    <video src="${escapeHTML(post.video_url)}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
                                     <div class="video-controls-overlay"> <button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button> <button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button> </div>
                                     <div class="video-progress-bar"><div class="video-progress-filled"></div></div>
                                 </div>`;
@@ -813,7 +831,8 @@
             }
 
             if (post.is_promotion && post.promotion_link) {
-                postContentHtml += `<div class="mt-3"><a href="${post.promotion_link}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Learn More'}</a></div>`;
+                 const safeLink = post.promotion_link.startsWith('http') ? post.promotion_link : '#';
+                postContentHtml += `<div class="mt-3"><a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Learn More'}</a></div>`;
             }
 
             const reactions = post.reactions || [];
@@ -823,18 +842,18 @@
             }, {});
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
-            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             
             const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Sponsored by ${escapeHTML(profile.full_name)}</p>` : '';
             
             div.innerHTML = `
-                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700" loading="lazy"></a></div>
+                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-2xl bg-gray-200 dark:bg-slate-700 object-cover flex-shrink-0" loading="lazy"></a></div>
                 <div class="w-full">
                     <div class="flex justify-between items-start">
                         <div>
                             <a href="profile.html?user_id=${profile.id}" class="hover:underline">
                                 <p class="font-bold flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}
-                                <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${profile.username}</span></p>
+                                <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${escapeHTML(profile.username)}</span></p>
                             </a>
                             <p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
                         </div>
@@ -873,7 +892,7 @@
             const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
             const userReaction = reactions.find(r => r.user_id === currentUser.id);
             const summaryContainer = postElement.querySelector('.reaction-summary');
-            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${type}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
             const reactionButton = postElement.querySelector('.reactions-container button');
             if (reactionButton) reactionButton.classList.toggle('text-yellow-500', !!userReaction);
         }
@@ -937,14 +956,16 @@
             const isPostOwner = currentUser.id === postOwnerId;
             const isCommentOwner = currentUser.id === comment.user_id;
             let replyToMentionSpan = '';
-            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${comment.reply_to_username}" class="text-blue-500 hover:underline mr-1">@${comment.reply_to_username}</a>`;
+            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${encodeURIComponent(comment.reply_to_username)}" class="text-blue-500 hover:underline mr-1">@${escapeHTML(comment.reply_to_username)}</a>`;
             
             const escapedContent = escapeHTML(comment.content);
-            const processedContent = escapedContent.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="text-blue-500 hover:underline">@$1</a>');
+            const processedContent = escapedContent.replace(/@(\w+)/g, (match, mention) => {
+                 return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+            });
             
             const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
             const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
-            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-slate-700 flex-shrink-0"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${profile.username}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)} ${profile.is_verified ? '<span class="ml-1 text-blue-400 text-xs"><i class="bi bi-patch-check-fill"></i></span>' : ''}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${escapeHTML(profile.username)}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
             return div;
         }
 
@@ -995,8 +1016,41 @@
 
         function setupMentionHandler(inputElement, popupElement) {
             let mentionStartIndex = -1;
-            inputElement.addEventListener('input', async (e) => { const text = e.target.value, cursorPos = e.target.selectionStart, atIndex = text.lastIndexOf('@', cursorPos - 1); if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { const query = text.substring(atIndex + 1, cursorPos); if (!/\s/.test(query)) { mentionStartIndex = atIndex; const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); if (users && users.length > 0) { popupElement.innerHTML = users.map(user => { const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name); return `<div class="mention-item dark:hover:bg-slate-600" data-username="${user.username}"><img src="${avatarUrl}" class="w-8 h-8 rounded-xl mr-2"><div><p class="font-semibold">${user.full_name || 'User'}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${user.username}</p></div></div>`}).join(''); popupElement.classList.remove('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); } else popupElement.classList.add('hidden'); });
-            popupElement.addEventListener('click', (e) => { const item = e.target.closest('.mention-item'); if (item) { const username = item.dataset.username; const currentText = inputElement.value; const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); inputElement.value = newText; popupElement.classList.add('hidden'); inputElement.focus(); } });
+            inputElement.addEventListener('input', async (e) => { 
+                const text = e.target.value, cursorPos = e.target.selectionStart; 
+                const atIndex = text.lastIndexOf('@', cursorPos - 1); 
+                if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { 
+                    const query = text.substring(atIndex + 1, cursorPos); 
+                    if (!/\s/.test(query)) { 
+                        mentionStartIndex = atIndex; 
+                        const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
+                        if (users && users.length > 0) { 
+                            popupElement.innerHTML = users.map(user => { 
+                                const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name); 
+                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${escapeHTML(user.username)}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold">${escapeHTML(user.full_name || 'User')}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${escapeHTML(user.username)}</p></div></div>`
+                            }).join(''); 
+                            popupElement.classList.remove('hidden'); 
+                        } else { 
+                            popupElement.classList.add('hidden'); 
+                        } 
+                    } else { 
+                        popupElement.classList.add('hidden'); 
+                    } 
+                } else { 
+                    popupElement.classList.add('hidden'); 
+                } 
+            }); 
+            popupElement.addEventListener('click', (e) => { 
+                const item = e.target.closest('.mention-item'); 
+                if (item) { 
+                    const username = item.dataset.username; 
+                    const currentText = inputElement.value; 
+                    const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); 
+                    inputElement.value = newText; 
+                    popupElement.classList.add('hidden'); 
+                    inputElement.focus(); 
+                } 
+            });
         }
 
         setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
@@ -1067,7 +1121,15 @@
             const likeButton = e.target.closest('.like-button:not(.like-comment-button)'); if (likeButton) { const postId = likeButton.dataset.postId; if(likeButton.disabled) return; likeButton.disabled = true; recentlyUpdatedPostLikes.add(postId); setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000); const wasLiked = likeButton.dataset.liked === 'true'; const likeCountSpan = likeButton.querySelector('.like-count'); const icon = likeButton.querySelector('i'); const currentCount = parseInt(likeCountSpan.textContent); likeButton.dataset.liked = !wasLiked; likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1; likeButton.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId }).then(({ error }) => { if (error) { console.error('Like error:', error); likeButton.dataset.liked = wasLiked; likeCountSpan.textContent = currentCount; likeButton.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedPostLikes.delete(postId); } }).finally(() => { likeButton.disabled = false; }); }
             const commentButton = e.target.closest('.comment-button'); if (commentButton) openCommentModal(commentButton.dataset.postId);
             const deleteButton = e.target.closest('.delete-post-button'); if (deleteButton) { showConfirmModal('Postingan ini akan dihapus permanen.', () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (error) console.error('Delete error:', error); else document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); }); }
-            const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', 'index.html')}?post_id=${postId}`; try { await navigator.clipboard.writeText(postUrl); showToast('Tautan disalin ke clipboard!'); const { error } = await db.rpc('repost_post', { post_id_to_repost: postId }); if(error) throw error; } catch(err) { console.error('Gagal menyalin:', err); showToast('Gagal menyalin tautan.'); } }
+            const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', 'index.html')}?post_id=${postId}`; try {
+                 const tempInput = document.createElement('textarea');
+                 tempInput.value = postUrl;
+                 document.body.appendChild(tempInput);
+                 tempInput.select();
+                 document.execCommand('copy');
+                 document.body.removeChild(tempInput);
+                 showToast('Tautan disalin ke clipboard!');
+                 const { error } = await db.rpc('repost_post', { post_id_to_repost: postId }); if(error) throw error; } catch(err) { console.error('Gagal menyalin:', err); showToast('Gagal menyalin tautan.'); } }
             
             const pollOption = e.target.closest('.poll-option-display');
             if (pollOption) {
@@ -1167,7 +1229,7 @@
         timeline.addEventListener('timeupdate', e => { if (e.target.tagName === 'VIDEO') { const player = e.target.closest('.custom-video-player'); if (!player) return; player.querySelector('.video-progress-filled').style.width = `${(e.target.currentTime / e.target.duration) * 100}%`; } }, true);
         
         modalContent.addEventListener('click', async (e) => {
-            const replyBtn = e.target.closest('.reply-button'); if (replyBtn) { const repliedToCommentId = replyBtn.dataset.commentId; const repliedToUsername = replyBtn.dataset.username; const repliedToComment = commentsById.get(repliedToCommentId); let newParentId = repliedToCommentId; let current = repliedToComment; while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); } activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername }; replyingToBanner.innerHTML = `Membalas <strong>@${activeReplyTo.replyToUsernameForDisplay}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`; replyingToBanner.classList.remove('hidden'); commentInput.focus(); document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); }; }
+            const replyBtn = e.target.closest('.reply-button'); if (replyBtn) { const repliedToCommentId = replyBtn.dataset.commentId; const repliedToUsername = replyBtn.dataset.username; const repliedToComment = commentsById.get(repliedToCommentId); let newParentId = repliedToCommentId; let current = repliedToComment; while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); } activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername }; replyingToBanner.innerHTML = `Membalas <strong>@${escapeHTML(activeReplyTo.replyToUsernameForDisplay)}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`; replyingToBanner.classList.remove('hidden'); commentInput.focus(); document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); }; }
             const toggleBtn = e.target.closest('.toggle-replies-button'); if (toggleBtn) { const repliesContainer = toggleBtn.nextElementSibling; if (repliesContainer) { repliesContainer.classList.toggle('hidden'); const isHidden = repliesContainer.classList.contains('hidden'); const replyCount = toggleBtn.textContent.match(/\d+/)[0]; toggleBtn.textContent = isHidden ? `Lihat ${replyCount} balasan` : 'Sembunyikan balasan'; } }
             const likeCommentBtn = e.target.closest('.like-comment-button'); if (likeCommentBtn) { const commentId = likeCommentBtn.dataset.commentId; if (likeCommentBtn.disabled) return; likeCommentBtn.disabled = true; recentlyUpdatedCommentLikes.add(commentId); setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000); const wasLiked = likeCommentBtn.dataset.liked === 'true'; const countSpan = likeCommentBtn.querySelector('.comment-like-count'); const icon = likeCommentBtn.querySelector('i'); const originalCount = parseInt(countSpan.textContent); likeCommentBtn.dataset.liked = !wasLiked; countSpan.textContent = wasLiked ? originalCount - 1 : originalCount + 1; likeCommentBtn.classList.toggle('text-red-500', !wasLiked); icon.classList.toggle('bi-heart-fill', !wasLiked); icon.classList.toggle('bi-heart', wasLiked); try { const { error } = await db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id }); if (error) throw error; } catch(error) { console.error('Like error:', error); likeCommentBtn.dataset.liked = wasLiked; countSpan.textContent = originalCount; likeCommentBtn.classList.toggle('text-red-500', wasLiked); icon.classList.toggle('bi-heart-fill', wasLiked); icon.classList.toggle('bi-heart', !wasLiked); recentlyUpdatedCommentLikes.delete(commentId); } finally { likeCommentBtn.disabled = false; } }
             const pinCommentBtn = e.target.closest('.pin-comment-button'); if(pinCommentBtn) { const commentId = pinCommentBtn.dataset.commentId; const isPinned = !(pinCommentBtn.dataset.pinned === 'true'); await db.from('comments').update({ is_pinned: isPinned }).eq('id', commentId); await openCommentModal(activePostForComment.id); }
@@ -1216,4 +1278,3 @@
     </script>
 </body>
 </html>
-
