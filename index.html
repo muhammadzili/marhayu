@@ -30,7 +30,7 @@
         
         /* FIX: Mengatasi bug latar belakang komentar disematkan di dark mode */
         .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
-        .dark .comment-pinned .dark\:bg-slate-800 { background-color: rgba(71, 85, 105, 0.3) !important; }
+        .dark .comment-pinned .dark\:bg-slate-700 { background-color: rgba(71, 85, 105, 0.3) !important; }
         
         .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
         .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
@@ -1147,7 +1147,7 @@
                 const hasVotedThis = userVote && userVote.option_text === optionText;
                 optionEl.classList.toggle('voted-by-user', hasVotedThis);
 
-                const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
+                const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
                 const progressBar = optionEl.querySelector('.poll-option-bar');
                 let percentTextEl = optionEl.querySelector('.poll-option-percent');
                 const textContainer = optionEl.querySelector('.poll-option-text-container');
