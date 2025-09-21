@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marhayu - Ruang Aman Anda untuk Berekspresi dan Terhubung</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script>
+        tailwind.config = {
+          darkMode: 'class',
+        }
+    </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+        }
+        .dark body {
+             background-color: #0f172a;
+        }
+        .section-fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .section-fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .glass-navbar {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+        }
+        .dark .glass-navbar {
+            background-color: rgba(15, 23, 42, 0.7);
+        }
+        .hero-gradient-text {
+            background-image: linear-gradient(to right, #4f46e5, #0ea5e9, #14b8a6);
+        }
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .testimonial-card {
+             background: rgba(255,255,255, 0.5);
+             backdrop-filter: blur(10px);
+             border: 1px solid rgba(255,255,255,0.2);
+        }
+         .dark .testimonial-card {
+             background: rgba(30, 41, 59, 0.5);
+             border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .background-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle at top left, rgba(79, 70, 229, 0.1), transparent 30%),
+                              radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.1), transparent 40%);
+            z-index: -1;
+        }
+        .dark .background-pattern {
+             background-image: radial-gradient(circle at top left, rgba(79, 70, 229, 0.15), transparent 30%),
+                              radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.15), transparent 40%);
+        }
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-200">
+    <div class="relative overflow-hidden">
+        <div class="background-pattern"></div>
+
+        <!-- Header / Navbar -->
+        <header id="navbar" class="glass-navbar sticky top-0 z-50 border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300">
+            <div class="container mx-auto max-w-7xl px-4">
+                <div class="flex items-center justify-between h-16">
+                    <a href="#" class="flex items-center space-x-2">
+                        <img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-8">
+                        <span class="text-xl font-bold">Marhayu</span>
+                    </a>
+                    <nav class="hidden md:flex items-center space-x-6 font-medium">
+                        <a href="#fitur" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Fitur</a>
+                        <a href="#kenapa-marhayu" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Kenapa Marhayu?</a>
+                        <a href="#kontak" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Kontak</a>
+                    </nav>
+                    <div class="flex items-center space-x-2">
+                         <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full text-sm p-2.5">
+                            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 11a1 1 0 100 2h1a1 1 0 100-2H3z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>
+                        </button>
+                        <a href="auth.html" class="bg-black text-white px-5 py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors">Masuk</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Hero Section -->
+            <section class="py-20 md:py-32">
+                <div class="container mx-auto max-w-7xl px-4 text-center">
+                    <h1 class="text-5xl md:text-7xl font-black tracking-tight leading-tight mb-6">
+                        <span class="hero-gradient-text bg-clip-text text-transparent">Ruang Aman Anda</span> untuk Berekspresi dan Terhubung.
+                    </h1>
+                    <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-10">
+                        Marhayu adalah platform media sosial generasi baru yang dirancang untuk menjadi tempat di mana Anda bisa menjadi diri sendiri, berbagi momen otentik, dan terhubung dengan komunitas yang positif dan suportif.
+                    </p>
+                    <a href="auth.html" class="bg-indigo-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-indigo-700 transition-transform hover:scale-105 inline-block shadow-lg shadow-indigo-500/30">
+                        Mulai Bergabung Sekarang
+                    </a>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section id="fitur" class="py-20 bg-slate-50 dark:bg-slate-900/50 section-fade-in">
+                <div class="container mx-auto max-w-7xl px-4">
+                    <div class="text-center mb-16">
+                        <h2 class="text-4xl md:text-5xl font-bold">Fitur Unggulan Marhayu</h2>
+                        <p class="mt-4 text-lg text-slate-600 dark:text-slate-400">Semua yang Anda butuhkan untuk pengalaman sosial yang lebih bermakna.</p>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <div class="feature-card bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+                            <div class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6"><i class="bi bi-chat-dots-fill text-3xl"></i></div>
+                            <h3 class="text-xl font-bold mb-3">Ekspresikan Diri Anda</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Bagikan pemikiran, foto, video, atau gunakan format teks penuh kami yang unik untuk membuat postingan Anda lebih menonjol.</p>
+                        </div>
+                        <div class="feature-card bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+                            <div class="bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6"><i class="bi bi-bar-chart-line-fill text-3xl"></i></div>
+                            <h3 class="text-xl font-bold mb-3">Polling Interaktif</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Buat polling dengan mudah untuk mendapatkan opini dari teman atau pengikut Anda tentang topik apa pun secara real-time.</p>
+                        </div>
+                        <div class="feature-card bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+                            <div class="bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-300 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6"><i class="bi bi-shield-lock-fill text-3xl"></i></div>
+                            <h3 class="text-xl font-bold mb-3">Privasi Anda Prioritas</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Dengan opsi akun privat, Anda memiliki kontrol penuh atas siapa yang dapat melihat konten Anda dan berinteraksi dengan Anda.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Why Marhayu Section -->
+            <section id="kenapa-marhayu" class="py-20 section-fade-in">
+                <div class="container mx-auto max-w-7xl px-4">
+                    <div class="grid md:grid-cols-2 gap-12 items-center">
+                        <div>
+                            <img src="https://placehold.co/600x400/e0e7ff/4338ca?text=Komunitas+Positif" alt="Komunitas Marhayu" class="rounded-2xl shadow-xl">
+                        </div>
+                        <div>
+                            <h2 class="text-4xl md:text-5xl font-bold mb-6">Kenapa Memilih Marhayu?</h2>
+                             <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+                                Kami membangun Marhayu dari keyakinan bahwa media sosial seharusnya memberdayakan, bukan menguras energi. Misi kami adalah menciptakan platform yang mengutamakan koneksi tulus, percakapan sehat, dan komunitas yang suportif.
+                            </p>
+                            <ul class="space-y-4">
+                                <li class="flex items-start"><i class="bi bi-check-circle-fill text-green-500 text-xl mr-3 mt-1"></i><span><strong>Bebas Algoritma Toksik:</strong> Timeline Anda, kendali Anda. Kami fokus pada konten dari orang yang Anda ikuti.</span></li>
+                                <li class="flex items-start"><i class="bi bi-check-circle-fill text-green-500 text-xl mr-3 mt-1"></i><span><strong>Fokus pada Komunitas:</strong> Temukan dan bergabunglah dengan grup berdasarkan minat Anda, bukan metrik popularitas.</span></li>
+                                <li class="flex items-start"><i class="bi bi-check-circle-fill text-green-500 text-xl mr-3 mt-1"></i><span><strong>Inovasi Berkelanjutan:</strong> Kami berkomitmen untuk terus berinovasi dan mendengarkan feedback Anda untuk pengalaman terbaik.</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Testimonials Section -->
+            <section class="py-20 bg-slate-50 dark:bg-slate-900/50 section-fade-in">
+                <div class="container mx-auto max-w-7xl px-4">
+                    <div class="text-center mb-16">
+                        <h2 class="text-4xl md:text-5xl font-bold">Apa Kata Mereka?</h2>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <div class="testimonial-card p-8 rounded-2xl"><p class="mb-4">"Akhirnya ada medsos yang terasa lebih tenang dan personal. Saya suka karena bisa jadi diri sendiri di sini."</p><p class="font-bold">- Pengguna A</p></div>
+                        <div class="testimonial-card p-8 rounded-2xl"><p class="mb-4">"Fitur pollingnya seru banget buat interaksi sama teman-teman. Desainnya juga bersih dan mudah digunakan."</p><p class="font-bold">- Pengguna B</p></div>
+                        <div class="testimonial-card p-8 rounded-2xl"><p class="mb-4">"Saya merasa lebih aman di Marhayu. Kontrol privasi yang mudah membuat saya nyaman berbagi momen."</p><p class="font-bold">- Pengguna C</p></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Creator Section -->
+             <section id="kontak" class="py-20 section-fade-in">
+                <div class="container mx-auto max-w-4xl px-4 text-center">
+                    <img src="https://avatars.githubusercontent.com/u/127117398" alt="Foto Muhammad Zili" class="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg">
+                    <h2 class="text-3xl md:text-4xl font-bold">Dari Sang Kreator</h2>
+                    <p class="mt-4 text-lg text-slate-600 dark:text-slate-400">
+                        "Marhayu adalah proyek passion saya untuk menciptakan alternatif media sosial yang lebih sehat. Saya harap Anda menikmatinya!"
+                    </p>
+                    <p class="mt-2 font-bold text-xl">Muhammad Zili</p>
+                    <a href="https://mzili.my.id" target="_blank" class="text-indigo-500 hover:underline">mzili.my.id</a>
+                    <div class="mt-6">
+                        <p class="text-slate-600 dark:text-slate-400">Punya pertanyaan atau masukan? Hubungi saya:</p>
+                        <a href="mailto:zilizero0@gmail.com" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">zilizero0@gmail.com</a>
+                        <span class="mx-2 text-slate-400">atau</span>
+                        <a href="https://www.instagram.com/mhmdszuli" target="_blank" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">DM Instagram @mhmdszuli</a>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- CTA Section -->
+            <section class="py-20 bg-slate-50 dark:bg-slate-900/50 section-fade-in">
+                <div class="container mx-auto max-w-4xl px-4 text-center">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4">Siap Menjadi Bagian dari Komunitas?</h2>
+                    <p class="max-w-xl mx-auto text-lg text-slate-600 dark:text-slate-400 mb-8">Daftar sekarang secara gratis dan mulailah perjalanan Anda di Marhayu. Prosesnya cepat dan mudah!</p>
+                     <a href="auth.html" class="bg-black text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-transform hover:scale-105 inline-block shadow-lg">
+                        Buat Akun Sekarang
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-slate-200 dark:border-slate-800">
+            <div class="container mx-auto max-w-7xl px-4 py-8">
+                <div class="flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+                    <p class="text-slate-600 dark:text-slate-400">&copy; 2024 Marhayu. Dibuat oleh Muhammad Zili.</p>
+                    <div class="flex items-center space-x-6 mt-4 md:mt-0">
+                        <a href="terms.html" class="text-sm text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Syarat & Ketentuan</a>
+                        <a href="privacy.html" class="text-sm text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Kebijakan Privasi</a>
+                        <a href="https://www.instagram.com/mhmdszuli" target="_blank" class="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"><i class="bi bi-instagram text-2xl"></i></a>
+                        <a href="https://www.tiktok.com/@mhmdzuli" target="_blank" class="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"><i class="bi bi-tiktok text-2xl"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- THEME SWITCHER LOGIC ---
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleLightIcon.classList.add('hidden');
+                themeToggleDarkIcon.classList.remove('hidden');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        });
+        // --- END THEME SWITCHER LOGIC ---
+
+        // --- Scroll Animations ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.15
+        });
+
+        const sections = document.querySelectorAll('.section-fade-in');
+        sections.forEach(section => observer.observe(section));
+        
+        // --- Navbar shadow on scroll ---
+        const navbar = document.getElementById('navbar');
+        window.onscroll = function () {
+            if (window.scrollY > 10) {
+                navbar.classList.add("shadow-md");
+            } else {
+                navbar.classList.remove("shadow-md");
+            }
+        };
+    </script>
+</body>
+</html>
+
