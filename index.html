@@ -209,6 +209,16 @@
             border-radius: 6px;
             border: 3px solid #0f172a; /* slate-900 */
         }
+        
+        /* Added for loading more indicator */
+        #loading-indicator {
+            display: none;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        #loading-indicator.visible {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
@@ -281,7 +291,12 @@
                 </div>
             </div>
 
-            <div id="timeline"><p class="p-4 text-center text-gray-500 dark:text-slate-400">Memuat postingan...</p></div>
+            <div id="timeline">
+                <p class="p-4 text-center text-gray-500 dark:text-slate-400">Memuat postingan...</p>
+            </div>
+            <div id="loading-indicator">
+                <div class="w-8 h-8 border-4 border-t-transparent border-gray-300 dark:border-slate-600 rounded-full animate-spin mx-auto"></div>
+            </div>
         </main>
     </div>
     
@@ -452,7 +467,7 @@
 
         const { createClient } = supabase;
         let db; 
-        let activeTab = 'for-you'; // State for current tab
+        let activeTab = 'for-you';
 
         let currentUser = null, currentUserProfile = null, postImageFile = null, postVideoFile = null, activePostForComment = null, isFullTextMode = false, fullTextColor = '', fullTextFont = '', activeReplyTo = null, isPollMode = false;
         let promoteImageFile = null, promoteVideoFile = null;
@@ -462,6 +477,12 @@
         let recentlyUpdatedPostLikes = new Set();
         let recentlyUpdatedCommentLikes = new Set();
         let reactionPopoverTimeout;
+
+        // --- Infinite Scroll State ---
+        let currentPage = 0;
+        let isLoading = false;
+        let allPostsLoaded = false;
+        const POSTS_PER_PAGE = 5;
         
         const timeline = document.getElementById('timeline');
         const postContentInput = document.getElementById('post-content');
@@ -499,6 +520,10 @@
         // Bug Hunter Sheet Elements
         const bugHunterSheet = document.getElementById('bug-hunter-sheet');
         const closeBugSheetButton = document.getElementById('close-bug-sheet-button');
+
+        // Infinite Scroll Elements
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const mainScrollContainer = document.querySelector('main');
 
         const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
         globalReactionPopover.innerHTML = availableReactions
@@ -672,8 +697,9 @@
         function switchTab(tabName) {
             if (activeTab === tabName) return;
             activeTab = tabName;
+            mainScrollContainer.scrollTop = 0; // Scroll to top on tab change
             updateTabUI();
-            fetchPosts();
+            fetchPosts(false);
         }
 
         async function initialize() { 
@@ -707,6 +733,13 @@
             subscribeToNotifications();
             highlightActiveNav();
 
+            mainScrollContainer.addEventListener('scroll', () => {
+                if (isLoading || allPostsLoaded) return;
+                if (mainScrollContainer.scrollTop + mainScrollContainer.clientHeight >= mainScrollContainer.scrollHeight - 300) {
+                    fetchPosts(true);
+                }
+            });
+
             const urlParams = new URLSearchParams(window.location.search);
             const postIdFromUrl = urlParams.get('post_id');
             if (postIdFromUrl) openCommentModal(postIdFromUrl);
@@ -719,10 +752,21 @@
             }
         }
 
-        async function fetchPosts() {
-            timeline.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                timeline.appendChild(createSkeletonPostElement());
+        async function fetchPosts(loadMore = false) {
+            if (isLoading) return;
+            
+            if (!loadMore) {
+                currentPage = 0;
+                allPostsLoaded = false;
+                timeline.innerHTML = '';
+                for (let i = 0; i < POSTS_PER_PAGE; i++) {
+                    timeline.appendChild(createSkeletonPostElement());
+                }
+            }
+            
+            isLoading = true;
+            if (loadMore) {
+                loadingIndicator.classList.add('visible');
             }
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -741,20 +785,33 @@
             }
             
             let query = db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`);
+            
+            const from = currentPage * POSTS_PER_PAGE;
+            const to = from + POSTS_PER_PAGE - 1;
+            query = query.range(from, to);
 
             if (hashtagFromUrl) {
                 query = query.contains('hashtags', `{${hashtagFromUrl.toLowerCase()}}`).order('created_at', { ascending: false });
             } else if (activeTab === 'following') {
                 const usersToFetch = [...followingIds, currentUser.id];
-                query = query.in('user_id', usersToFetch);
+                query = query.in('user_id', usersToFetch).order('created_at', { ascending: false });
+            } else {
+                query = query.order('created_at', { ascending: false });
             }
             
             const { data: posts, error } = await query;
-            timeline.innerHTML = '';
 
+            if (!loadMore) {
+                timeline.innerHTML = '';
+            }
+            
             if (error) {
                 console.error('Error fetching posts:', error.message || error);
-                timeline.innerHTML = `<p class="p-4 text-center text-red-500">Gagal memuat postingan. Coba lagi nanti.</p>`;
+                if (!loadMore) {
+                    timeline.innerHTML = `<p class="p-4 text-center text-red-500">Gagal memuat postingan. Coba lagi nanti.</p>`;
+                }
+                isLoading = false;
+                if (loadMore) loadingIndicator.classList.remove('visible');
                 return;
             }
             
@@ -769,24 +826,22 @@
             });
 
             function shuffle(array) {
-                let currentIndex = array.length, randomIndex;
-                while (currentIndex != 0) {
-                    randomIndex = Math.floor(Math.random() * currentIndex);
-                    currentIndex--;
-                    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+                if (activeTab === 'for-you' && !hashtagFromUrl) {
+                    for (let i = array.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
                 }
                 return array;
             }
-
-            if (!hashtagFromUrl) {
-                 filteredPosts = shuffle(filteredPosts);
-            }
             
+            filteredPosts = shuffle(filteredPosts);
+
             const promotions = filteredPosts.filter(p => p.is_promotion);
             const regularPosts = filteredPosts.filter(p => !p.is_promotion);
             const finalPosts = [...promotions, ...regularPosts];
 
-            if (finalPosts.length === 0) {
+            if (finalPosts.length === 0 && !loadMore) {
                 timeline.innerHTML = `<p class="p-4 text-center text-gray-500 dark:text-slate-400">Tidak ada postingan untuk ditampilkan.</p>`;
             } else {
                 const postElements = finalPosts.map((post, index) => {
@@ -796,6 +851,14 @@
                 });
                 timeline.append(...postElements);
             }
+            
+            if (posts.length < POSTS_PER_PAGE) {
+                allPostsLoaded = true;
+            }
+
+            currentPage++;
+            isLoading = false;
+            if (loadMore) loadingIndicator.classList.remove('visible');
             setupVideoAutoplay();
         }
         
