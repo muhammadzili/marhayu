@@ -22,8 +22,8 @@
         body { font-family: 'Inter', sans-serif; }
         .font-lora { font-family: 'Lora', serif; }
         .font-playfair { font-family: 'Playfair Display', serif; }
-        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, #poll-options-container::-webkit-scrollbar, main::-webkit-scrollbar { display: none; }
-        .modal-content, .sidebar-nav, #poll-options-container, main { -ms-overflow-style: none; scrollbar-width: none; }
+        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, main::-webkit-scrollbar { display: none; }
+        .modal-content, .sidebar-nav, main { -ms-overflow-style: none; scrollbar-width: none; }
         .icon-btn { transition: color 0.2s ease-in-out; }
         .preview-container { position: relative; }
         .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
@@ -49,10 +49,10 @@
         .reaction-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
         .reaction-pill { display: flex; align-items: center; gap: 0.25rem; background-color: #eef2ff; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
         .user-reacted { background-color: #c7d2fe; border: 1px solid #818cf8; }
-        #comment-modal, #confirm-modal, #edit-profile-modal, #poll-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
-        #comment-modal.is-visible, #confirm-modal.is-visible, #edit-profile-modal.is-visible, #poll-modal.is-visible { opacity: 1; visibility: visible; }
-        #comment-modal .modal-box, #confirm-modal .modal-box, #edit-profile-modal .modal-box, #poll-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
-        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #edit-profile-modal.is-visible .modal-box, #poll-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
+        #comment-modal, #confirm-modal, #edit-profile-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
+        #comment-modal.is-visible, #confirm-modal.is-visible, #edit-profile-modal.is-visible { opacity: 1; visibility: visible; }
+        #comment-modal .modal-box, #confirm-modal .modal-box, #edit-profile-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
+        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #edit-profile-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
         .skeleton { background-color: #e5e7eb; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .dark .skeleton { background-color: #334155; }
         @keyframes pulse { 50% { opacity: .5; } }
@@ -66,12 +66,62 @@
         .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(26px); }
-        .poll-option { position: relative; border: 1px solid #d1d5db; border-radius: 0.75rem; padding: 0.75rem; cursor: pointer; overflow: hidden; transition: border-color 0.2s, background-color 0.2s; }
-        .poll-option:hover { border-color: #6366f1; }
-        .poll-option.user-voted { border-color: #4f46e5; background-color: #e0e7ff; font-weight: 500; }
-        .poll-progress { position: absolute; top: 0; left: 0; height: 100%; background-color: #c7d2fe; width: 0%; z-index: 1; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        .poll-option-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; }
-        .poll-option-percent { font-weight: 600; }
+        /* --- New Poll Styles inspired by explore-nusafeed --- */
+        .poll-option-display {
+            position: relative;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.5rem;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .dark .poll-option-display {
+            border-color: #475569; /* slate-600 */
+        }
+        .poll-option-display:hover {
+             border-color: #6366f1; /* indigo-500 */
+        }
+        .poll-option-display.voted-by-user {
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .poll-option-bar {
+            position: absolute;
+            top: 0; left: 0; height: 100%;
+            background-color: #c7d2fe; /* indigo-200 */
+            width: 0%;
+            z-index: 0;
+            transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dark .poll-option-bar {
+             background-color: rgba(99, 102, 241, 0.3); /* indigo-500 with opacity */
+        }
+        .poll-option-text-container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .poll-option-display.voted-by-user .poll-option-text-container {
+            background-color: #e0e7ff; /* indigo-100 */
+            font-weight: 500;
+        }
+        .dark .poll-option-display.voted-by-user .poll-option-text-container {
+            background-color: rgba(99, 102, 241, 0.2); /* indigo-500 with opacity */
+        }
+        .poll-option-display:not(.voted-by-user):hover .poll-option-text-container {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .dark .poll-option-display:not(.voted-by-user):hover .poll-option-text-container {
+             background-color: #1e293b; /* slate-800 */
+        }
+        .poll-option-percent {
+            font-weight: 600;
+        }
+        /* --- End of New Poll Styles --- */
         .copied-post-label { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.5rem; background-color: #f3f4f6; border-radius: 9999px; font-size: 0.75rem; color: #4b5563; margin-top: 0.5rem; }
         #toast-notification { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); color: white; padding: 0.75rem 1.5rem; border-radius: 9999px; z-index: 100; opacity: 0; visibility: hidden; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s; }
         #toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
@@ -657,6 +707,7 @@
             const div = document.createElement('div');
             div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4 post-enter-animation';
             div.id = `post-${post.id}`;
+            div.dataset.postObject = JSON.stringify(post);
             const profile = post.profiles;
             if (!profile) return div;
             const userHasLiked = (post.likes || []).some(like => like.user_id === currentUser.id);
@@ -688,18 +739,18 @@
                     const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
                     const hasVotedThis = userVote && userVote.option_text === option.option;
                     const showResults = !!userVote;
-                    return `<div class="poll-option dark:border-slate-600 dark:hover:border-indigo-400 ${hasVotedThis ? 'user-voted dark:border-indigo-400 dark:bg-indigo-900/50' : ''}" data-option="${option.option}" data-post-id="${post.id}">
-                            ${showResults ? `<div class="poll-progress dark:bg-indigo-500/60" style="width: ${percent}%;"></div>` : ''}
-                            <div class="poll-option-content">
-                                <span>${option.option}</span>
-                                ${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}
-                            </div>
-                        </div>`;
+                    return `<div class="poll-option-display ${hasVotedThis ? 'voted-by-user' : ''}" data-option="${option.option}" data-post-id="${post.id}">
+                                <div class="poll-option-bar" style="width: ${showResults ? percent : 0}%;"></div>
+                                <div class="poll-option-text-container">
+                                    <span>${option.option}</span>
+                                    ${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}
+                                </div>
+                            </div>`;
                 }).join('');
                 postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>
                     <div class="mt-3 space-y-2 poll-container" id="poll-${post.id}">
                         <p class="font-bold text-lg">${post.poll_question}</p>
-                        ${optionsHtml}
+                        <div class="space-y-2">${optionsHtml}</div>
                         <p class="text-xs text-gray-500 dark:text-slate-400 text-right">${totalVotes} suara</p>
                     </div>`;
             } else if (post.is_full_text) {
@@ -786,24 +837,32 @@
             if (!pollContainer) return;
             const userVote = (pollVotes || []).find(v => v.user_id === currentUser.id);
             const totalVotes = (pollOptions || []).reduce((sum, opt) => sum + (opt.votes || 0), 0);
-            pollContainer.querySelectorAll('.poll-option').forEach(optionEl => {
+            pollContainer.querySelectorAll('.poll-option-display').forEach(optionEl => {
                 const optionText = optionEl.dataset.option;
                 const optionData = pollOptions.find(o => o.option === optionText);
                 if (!optionData) return;
-                optionEl.classList.toggle('user-voted', userVote && userVote.option_text === optionText);
-                optionEl.classList.toggle('dark:border-indigo-400', userVote && userVote.option_text === optionText);
-                optionEl.classList.toggle('dark:bg-indigo-900/50', userVote && userVote.option_text === optionText);
+
+                const hasVotedThis = userVote && userVote.option_text === optionText;
+                optionEl.classList.toggle('voted-by-user', hasVotedThis);
+
                 const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
-                let progressEl = optionEl.querySelector('.poll-progress');
-                let percentEl = optionEl.querySelector('.poll-option-percent');
-                if (userVote) {
-                    if (!progressEl) { progressEl = document.createElement('div'); progressEl.className = 'poll-progress dark:bg-indigo-500/60'; optionEl.prepend(progressEl); }
-                    if (!percentEl) { percentEl = document.createElement('span'); percentEl.className = 'poll-option-percent'; optionEl.querySelector('.poll-option-content').appendChild(percentEl); }
-                    percentEl.textContent = `${percent}%`;
-                    setTimeout(() => { if (progressEl) progressEl.style.width = `${percent}%`; }, 10);
-                } else {
-                    if (progressEl) { progressEl.style.width = '0%'; progressEl.addEventListener('transitionend', () => progressEl.remove(), { once: true }); }
-                    if (percentEl) percentEl.remove();
+                const progressBar = optionEl.querySelector('.poll-option-bar');
+                let percentTextEl = optionEl.querySelector('.poll-option-percent');
+                const textContainer = optionEl.querySelector('.poll-option-text-container');
+
+                if (userVote) { // Show results if user has voted
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+                    if (!percentTextEl) {
+                        const newPercentEl = document.createElement('span');
+                        newPercentEl.className = 'poll-option-percent';
+                        newPercentEl.textContent = `${percent}%`;
+                        textContainer.appendChild(newPercentEl);
+                    } else {
+                        percentTextEl.textContent = `${percent}%`;
+                    }
+                } else { // Hide results if user retracts vote
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (percentTextEl) percentTextEl.remove();
                 }
             });
             const totalVotesEl = pollContainer.querySelector('.text-right');
@@ -958,7 +1017,96 @@
             const commentButton = e.target.closest('.comment-button'); if (commentButton) openCommentModal(commentButton.dataset.postId);
             const deleteButton = e.target.closest('.delete-post-button'); if (deleteButton) { showConfirmModal('Postingan ini akan dihapus permanen.', () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (error) console.error('Delete error:', error); else document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); }); }
             const copyLinkButton = e.target.closest('.copy-link-button'); if(copyLinkButton) { const postId = copyLinkButton.dataset.postId; const postUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', 'index.html')}?post_id=${postId}`; try { await navigator.clipboard.writeText(postUrl); showToast('Tautan disalin ke clipboard!'); const { error } = await db.rpc('repost_post', { post_id_to_repost: postId }); if(error) throw error; } catch(err) { console.error('Gagal menyalin:', err); showToast('Gagal menyalin tautan.'); } }
-            const pollOption = e.target.closest('.poll-option'); if (pollOption) { if (pollOption.getAttribute('data-processing') === 'true') return; const pollContainer = pollOption.closest('.poll-container'); const wasAlreadyVoted = pollOption.classList.contains('user-voted'); pollContainer.querySelectorAll('.poll-option').forEach(opt => opt.classList.remove('user-voted')); pollContainer.querySelectorAll('.poll-progress, .poll-option-percent').forEach(el => el.remove()); if (!wasAlreadyVoted) pollOption.classList.add('user-voted'); pollOption.setAttribute('data-processing', 'true'); const postId = pollOption.dataset.postId; const optionText = pollOption.dataset.option; const userId = currentUser.id; try { const { data: existingVote, error: findError } = await db.from('poll_votes').select('id, option_text').eq('post_id', postId).eq('user_id', userId).maybeSingle(); if (findError) throw findError; if (existingVote) { if (existingVote.option_text === optionText) { const { error: deleteError } = await db.from('poll_votes').delete().eq('id', existingVote.id); if (deleteError) throw deleteError; } else { const { error: updateError } = await db.from('poll_votes').update({ option_text: optionText }).eq('id', existingVote.id); if (updateError) throw updateError; } } else { const { error: insertError } = await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText }); if (insertError) throw insertError; } await updatePostPollData(postId); } catch (error) { console.error("Error processing poll vote:", error); showToast("Gagal memproses suara Anda."); } finally { pollOption.removeAttribute('data-processing'); } }
+            
+            const pollOption = e.target.closest('.poll-option-display');
+            if (pollOption) {
+                const postElement = pollOption.closest('.post-enter-animation');
+                if (!postElement || !postElement.dataset.postObject || pollOption.getAttribute('data-processing') === 'true') return;
+
+                pollOption.setAttribute('data-processing', 'true');
+
+                let post;
+                try {
+                    post = JSON.parse(postElement.dataset.postObject);
+                } catch (err) {
+                    pollOption.removeAttribute('data-processing');
+                    return; // Invalid post data
+                }
+                
+                const postId = post.id;
+                const optionText = pollOption.dataset.option;
+                const userId = currentUser.id;
+
+                // --- Optimistic Update Logic ---
+                let pollVotes = post.poll_votes || [];
+                let pollOptions = post.poll_options || [];
+                const existingVoteIndex = pollVotes.findIndex(v => v.user_id === userId);
+                const oldOptionText = existingVoteIndex !== -1 ? pollVotes[existingVoteIndex].option_text : null;
+
+                // Update local vote counts optimistically
+                if (oldOptionText) {
+                    const oldOption = pollOptions.find(o => o.option === oldOptionText);
+                    if (oldOption) oldOption.votes = Math.max(0, oldOption.votes - 1);
+                }
+                
+                if (oldOptionText === optionText) { // Case 1: Un-voting
+                    pollVotes.splice(existingVoteIndex, 1);
+                } else { // Case 2: New vote or changing vote
+                    const newOption = pollOptions.find(o => o.option === optionText);
+                    if (newOption) newOption.votes++;
+                    
+                    if (existingVoteIndex !== -1) { // Changing vote
+                        pollVotes[existingVoteIndex].option_text = optionText;
+                    } else { // New vote
+                        pollVotes.push({ user_id: userId, option_text: optionText, post_id: postId });
+                    }
+                }
+                
+                // Update post object and re-save to data attribute
+                post.poll_votes = pollVotes;
+                post.poll_options = pollOptions;
+                postElement.dataset.postObject = JSON.stringify(post);
+                
+                // --- Call UI Update with new local data for instant feedback ---
+                updatePollUI(postId, pollOptions, pollVotes);
+                const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
+                if (modalPostElement) {
+                   modalPostElement.dataset.postObject = JSON.stringify(post);
+                   updatePollUI(postId, pollOptions, pollVotes, modalContent);
+                }
+
+                // --- Database update in the background ---
+                (async () => {
+                    try {
+                        if (oldOptionText) {
+                             if (oldOptionText === optionText) { // un-vote
+                                await db.from('poll_votes').delete().match({ post_id: postId, user_id: userId });
+                             } else { // change vote
+                                await db.from('poll_votes').update({ option_text: optionText }).match({ post_id: postId, user_id: userId });
+                             }
+                        } else { // new vote
+                             await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText });
+                        }
+                        // Reconcile final counts on the main post table
+                        await updatePostPollData(postId);
+                    } catch (error) {
+                        console.error("Poll vote DB error:", error);
+                        showToast("Gagal menyimpan suara. Mengembalikan perubahan.");
+                        // Revert UI on error by fetching fresh data
+                        const { data: refreshedPost } = await db.from('posts').select(`*, poll_votes(user_id, option_text)`).eq('id', postId).single();
+                        if (refreshedPost) {
+                           postElement.dataset.postObject = JSON.stringify(refreshedPost);
+                           updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes);
+                           if (modalPostElement) {
+                               modalPostElement.dataset.postObject = JSON.stringify(refreshedPost);
+                               updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes, modalContent);
+                           }
+                        }
+                    } finally {
+                        pollOption.removeAttribute('data-processing');
+                    }
+                })();
+            }
         });
 
         document.body.addEventListener('mouseover', e => { const reactionContainer = e.target.closest('.reactions-container'); if (reactionContainer) { clearTimeout(reactionPopoverTimeout); const rect = reactionContainer.getBoundingClientRect(); globalReactionPopover.dataset.postId = reactionContainer.dataset.postId; const popoverWidth = globalReactionPopover.offsetWidth; let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2); if (leftPos < 8) leftPos = 8; if (leftPos + popoverWidth > window.innerWidth - 8) leftPos = window.innerWidth - popoverWidth - 8; globalReactionPopover.style.left = `${leftPos}px`; globalReactionPopover.style.top = `${rect.top - 45}px`; globalReactionPopover.classList.add('visible'); } });
