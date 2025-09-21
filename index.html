@@ -869,6 +869,7 @@
             const div = document.createElement('div');
             div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4 post-enter-animation';
             div.id = `post-${post.id}`;
+            div.dataset.postObject = JSON.stringify(post);
             const profile = post.profiles;
             if (!profile) return div;
             const userHasLiked = (post.likes || []).some(like => like.user_id === currentUser.id);
@@ -1322,21 +1323,94 @@
             
             const pollOption = e.target.closest('.poll-option-display');
             if (pollOption) {
-                if (pollOption.getAttribute('data-processing') === 'true') return;
+                const postElement = pollOption.closest('.post-enter-animation');
+                if (!postElement || !postElement.dataset.postObject || pollOption.getAttribute('data-processing') === 'true') return;
+
                 pollOption.setAttribute('data-processing', 'true');
-                const postId = pollOption.dataset.postId;
-                const optionText = pollOption.dataset.option;
+
+                let post;
                 try {
-                    const { data: existingVote, error: findError } = await db.from('poll_votes').select('id, option_text').eq('post_id', postId).eq('user_id', currentUser.id).maybeSingle();
-                    if (findError) throw findError;
-                    if (existingVote) {
-                        if (existingVote.option_text === optionText) { await db.from('poll_votes').delete().eq('id', existingVote.id); }
-                        else { await db.from('poll_votes').update({ option_text: optionText }).eq('id', existingVote.id); }
-                    } else { await db.from('poll_votes').insert({ post_id: postId, user_id: currentUser.id, option_text: optionText }); }
-                    await updatePostPollData(postId);
-                } catch (error) { showToast("Gagal memproses suara Anda."); }
-                finally { pollOption.removeAttribute('data-processing'); }
+                    post = JSON.parse(postElement.dataset.postObject);
+                } catch (err) {
+                    pollOption.removeAttribute('data-processing');
+                    return; // Invalid post data
+                }
+                
+                const postId = post.id;
+                const optionText = pollOption.dataset.option;
+                const userId = currentUser.id;
+
+                // --- Optimistic Update Logic ---
+                let pollVotes = post.poll_votes || [];
+                let pollOptions = post.poll_options || [];
+                const existingVoteIndex = pollVotes.findIndex(v => v.user_id === userId);
+                const oldOptionText = existingVoteIndex !== -1 ? pollVotes[existingVoteIndex].option_text : null;
+
+                // Update local vote counts optimistically
+                if (oldOptionText) {
+                    const oldOption = pollOptions.find(o => o.option === oldOptionText);
+                    if (oldOption) oldOption.votes = Math.max(0, oldOption.votes - 1);
+                }
+                
+                if (oldOptionText === optionText) { // Case 1: Un-voting
+                    pollVotes.splice(existingVoteIndex, 1);
+                } else { // Case 2: New vote or changing vote
+                    const newOption = pollOptions.find(o => o.option === optionText);
+                    if (newOption) newOption.votes++;
+                    
+                    if (existingVoteIndex !== -1) { // Changing vote
+                        pollVotes[existingVoteIndex].option_text = optionText;
+                    } else { // New vote
+                        pollVotes.push({ user_id: userId, option_text: optionText, post_id: postId });
+                    }
+                }
+                
+                // Update post object and re-save to data attribute
+                post.poll_votes = pollVotes;
+                post.poll_options = pollOptions;
+                postElement.dataset.postObject = JSON.stringify(post);
+                
+                // --- Call UI Update with new local data for instant feedback ---
+                updatePollUI(postId, pollOptions, pollVotes);
+                const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
+                if (modalPostElement) {
+                   modalPostElement.dataset.postObject = JSON.stringify(post);
+                   updatePollUI(postId, pollOptions, pollVotes, modalContent);
+                }
+
+                // --- Database update in the background ---
+                (async () => {
+                    try {
+                        if (oldOptionText) {
+                             if (oldOptionText === optionText) { // un-vote
+                                await db.from('poll_votes').delete().match({ post_id: postId, user_id: userId });
+                             } else { // change vote
+                                await db.from('poll_votes').update({ option_text: optionText }).match({ post_id: postId, user_id: userId });
+                             }
+                        } else { // new vote
+                             await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText });
+                        }
+                        // Reconcile final counts on the main post table
+                        await updatePostPollData(postId);
+                    } catch (error) {
+                        console.error("Poll vote DB error:", error);
+                        showToast("Gagal menyimpan suara. Mengembalikan perubahan.");
+                        // Revert UI on error by fetching fresh data
+                        const { data: refreshedPost } = await db.from('posts').select(`*, poll_votes(user_id, option_text)`).eq('id', postId).single();
+                        if (refreshedPost) {
+                           postElement.dataset.postObject = JSON.stringify(refreshedPost);
+                           updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes);
+                           if (modalPostElement) {
+                               modalPostElement.dataset.postObject = JSON.stringify(refreshedPost);
+                               updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes, modalContent);
+                           }
+                        }
+                    } finally {
+                        pollOption.removeAttribute('data-processing');
+                    }
+                })();
             }
+
 
             const copyLinkButton = e.target.closest('.copy-link-button');
             if(copyLinkButton) {
@@ -1777,3 +1851,4 @@
     </script>
 </body>
 </html>
+
