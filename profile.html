@@ -125,19 +125,6 @@
         .copied-post-label { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.5rem; background-color: #f3f4f6; border-radius: 9999px; font-size: 0.75rem; color: #4b5563; margin-top: 0.5rem; }
         #toast-notification { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); color: white; padding: 0.75rem 1.5rem; border-radius: 9999px; z-index: 100; opacity: 0; visibility: hidden; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s; }
         #toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
-        
-        /* Neon Glow Name Style */
-        .neon-glow-name {
-            font-family: 'Arial Black', sans-serif;
-            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffcc00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: glow 2s infinite alternate;
-        }
-        @keyframes glow {
-            from { text-shadow: 0 0 5px rgba(255,255,255,0.5), 0 0 10px #ff00ff, 0 0 15px #00ffff; }
-            to { text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 15px #00ffff, 0 0 20px #ff00ff; }
-        }
         #edit-name-char-counter.limit-exceeded {
             color: #ef4444;
         }
@@ -273,19 +260,6 @@
                             <label for="bio-input" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Bio</label>
                             <textarea id="bio-input" rows="3" class="w-full bg-gray-100 dark:bg-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none" placeholder="Ceritakan tentang diri Anda..."></textarea>
                         </div>
-                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Gaya Nama</label>
-                            <div id="name-style-selector" class="flex items-center space-x-4 p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
-                                <label class="flex-1 text-center cursor-pointer">
-                                    <input type="radio" name="name-style" value="default" class="sr-only">
-                                    <span class="name-style-label-default py-2 px-4 rounded-md">Default</span>
-                                </label>
-                                <label class="flex-1 text-center cursor-pointer">
-                                    <input type="radio" name="name-style" value="neon_glow" class="sr-only">
-                                    <span class="name-style-label-neon py-2 px-4 rounded-md neon-glow-name">Neon Glow</span>
-                                </label>
-                            </div>
-                        </div>
                         <div class="flex items-center justify-between pt-2">
                             <div>
                                 <label for="private-account-toggle" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Akun Privat</label>
@@ -415,7 +389,8 @@
             const nameCharCounter = document.getElementById('edit-name-char-counter');
 
             function enableSaveButton() {
-                saveButton.disabled = false;
+                const nameLength = fullNameInput.value.length;
+                saveButton.disabled = nameLength > 20;
             }
 
             fullNameInput.addEventListener('input', () => {
@@ -454,15 +429,6 @@
             usernameInput.addEventListener('input', enableSaveButton);
             bioInput.addEventListener('input', enableSaveButton);
             privateAccountToggle.addEventListener('change', enableSaveButton);
-            document.querySelectorAll('input[name="name-style"]').forEach(radio => {
-                radio.addEventListener('change', () => {
-                    enableSaveButton();
-                    document.querySelector('.name-style-label-default').classList.toggle('bg-white', radio.value === 'default');
-                    document.querySelector('.name-style-label-default').classList.toggle('dark:bg-slate-900', radio.value === 'default');
-                    document.querySelector('.name-style-label-neon').classList.toggle('bg-white', radio.value === 'neon_glow');
-                    document.querySelector('.name-style-label-neon').classList.toggle('dark:bg-slate-900', radio.value === 'neon_glow');
-                });
-            });
         }
 
         function showToast(message) {
@@ -537,24 +503,18 @@
             if (error || !profile) { console.error('Error fetching profile:', error); timeline.innerHTML = '<p class="p-4 text-center text-red-500">Gagal memuat profil.</p>'; return; }
             viewedProfile = profile;
             
-            document.getElementById('profile-header-name').textContent = profile.full_name;
             const fullNameElement = document.getElementById('profile-fullname');
             
-            // Sanitize and set name
+            // Sanitize and set name as plain text to prevent XSS
             fullNameElement.innerHTML = ''; // Clear previous content
-            fullNameElement.textContent = profile.full_name; // Set name as plain text to prevent XSS
+            fullNameElement.textContent = profile.full_name; 
             if (profile.is_verified) {
                 const badge = document.createElement('span');
                 badge.className = 'ml-2 text-blue-500';
                 badge.innerHTML = '<i class="bi bi-patch-check-fill"></i>';
                 fullNameElement.appendChild(badge);
             }
-            
-            // Apply conditional style
-            fullNameElement.classList.remove('neon-glow-name');
-            if (profile.name_style_preset === 'neon_glow') {
-                fullNameElement.classList.add('neon-glow-name');
-            }
+            document.getElementById('profile-header-name').textContent = profile.full_name;
             
             document.getElementById('profile-avatar').src = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
             document.getElementById('profile-username').textContent = `@${profile.username}`;
@@ -1076,13 +1036,6 @@
                 avatarPreview.src = '';
                 avatarPreview.classList.add('hidden');
             }
-
-            const nameStyle = viewedProfile.name_style_preset || 'default';
-            document.querySelector(`input[name="name-style"][value="${nameStyle}"]`).checked = true;
-             document.querySelector('.name-style-label-default').classList.toggle('bg-white', nameStyle === 'default');
-             document.querySelector('.name-style-label-default').classList.toggle('dark:bg-slate-900', nameStyle === 'default');
-             document.querySelector('.name-style-label-neon').classList.toggle('bg-white', nameStyle === 'neon_glow');
-             document.querySelector('.name-style-label-neon').classList.toggle('dark:bg-slate-900', nameStyle === 'neon_glow');
             
             avatarUploadInput.value = ''; 
             bannerUploadInput.value = ''; 
@@ -1105,12 +1058,11 @@
             const saveButton = document.getElementById('save-profile-button');
             saveButton.disabled = true; saveButton.textContent = 'Menyimpan...';
             const newFullName = fullNameInput.value, newUsername = usernameInput.value, newBio = bioInput.value, newIsPrivate = privateAccountToggle.checked, avatarFile = avatarUploadInput.files[0], bannerFile = bannerUploadInput.files[0];
-            const newNameStyle = document.querySelector('input[name="name-style"]:checked').value;
             let avatarUrl = viewedProfile.profile_avatar_url, bannerUrl = viewedProfile.banner_url;
             try {
                 if (avatarFile) { const fileName = `${currentUser.id}/avatar-${Date.now()}`; await db.storage.from('media').upload(fileName, avatarFile, { upsert: true }); const { data } = db.storage.from('media').getPublicUrl(fileName); avatarUrl = data.publicUrl; }
                 if (bannerFile) { const fileName = `${currentUser.id}/banner-${Date.now()}`; await db.storage.from('media').upload(fileName, bannerFile, { upsert: true }); const { data } = db.storage.from('media').getPublicUrl(fileName); bannerUrl = data.publicUrl; }
-                const { error: updateError } = await db.from('profiles').update({ full_name: newFullName, username: newUsername, bio: newBio, profile_avatar_url: avatarUrl, banner_url: bannerUrl, is_private: newIsPrivate, name_style_preset: newNameStyle }).eq('id', currentUser.id);
+                const { error: updateError } = await db.from('profiles').update({ full_name: newFullName, username: newUsername, bio: newBio, profile_avatar_url: avatarUrl, banner_url: bannerUrl, is_private: newIsPrivate }).eq('id', currentUser.id);
                 if (updateError) throw updateError;
                 closeEditModal();
                 await fetchProfileData(currentUser.id);
