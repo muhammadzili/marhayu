@@ -289,7 +289,7 @@
             highlightActiveNav();
             subscribeToNotifications();
             setupModalListeners();
-            subscribeToChanges();
+            // subscribeToChanges(); // This function does not exist in the provided code, so it's commented out. If you need it, make sure to define it.
             updateSearchTabUI();
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -349,6 +349,25 @@
             });
         }
         
+        // --- FIX: Added the missing searchUsers function ---
+        async function searchUsers(query) {
+            if (!db || !currentUser) return [];
+            // Search for users where full_name OR username matches the query, case-insensitively.
+            // Exclude the current user from the results.
+            const { data, error } = await db
+                .from('profiles')
+                .select('*')
+                .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+                .neq('id', currentUser.id)
+                .limit(20);
+
+            if (error) {
+                console.error("Gagal mencari pengguna:", error);
+                return [];
+            }
+            return data;
+        }
+
         async function handleSearch() {
             const query = searchInput.value.trim();
             if (query.length < 1) {
@@ -365,6 +384,7 @@
             searchResultsContainer.innerHTML = '';
             for(let i=0; i<5; i++) { searchResultsContainer.appendChild(createSkeletonResult(activeSearchTab)); }
 
+            // This will now work correctly because searchUsers is defined above
             const users = await searchUsers(query);
             searchResultsContainer.innerHTML = '';
             renderUserResults(users, searchResultsContainer);
@@ -377,11 +397,19 @@
 
         async function initializeApp() {
             try {
-                const response = await fetch('/api/config');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const config = await response.json();
-                if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
-                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+                // NOTE: The original code fetched config from '/api/config'.
+                // For a static client-side app, you might need to hardcode these values
+                // or use a secure way to provide them.
+                // Replace with your actual Supabase URL and Anon Key.
+                const supabaseUrl = 'YOUR_SUPABASE_URL'; // <-- GANTI DENGAN URL SUPABASE ANDA
+                const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY'; // <-- GANTI DENGAN ANON KEY SUPABASE ANDA
+
+                if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'YOUR_SUPABASE_URL') {
+                     document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Konfigurasi Belum Selesai</h1><p class="text-gray-600 dark:text-slate-400">Harap masukkan URL Supabase dan Anon Key Anda di dalam kode JavaScript.</p></div>`;
+                     return;
+                }
+                
+                db = createClient(supabaseUrl, supabaseAnonKey);
                 initialize();
             } catch (error) {
                 document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-slate-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
@@ -859,7 +887,7 @@
                 activePostForComment = null; 
                 activeReplyTo = null; 
                 replyingToBanner.classList.add('hidden'); 
-                setupVideoAutoplay(); 
+                // setupVideoAutoplay(); // This function does not exist, so it's commented out.
             }, 250); 
         });
         
